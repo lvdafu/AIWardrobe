@@ -54,7 +54,7 @@
 
 ### 前置要求 (Prerequisites)
 
-- **Node.js**: v18+
+- **Node.js**: v20+
 - **Python**: v3.10+
 - **API Keys**:
   - [Google Gemini API Key](https://aistudio.google.com/app/apikey) 或 OpenAI Key
@@ -146,16 +146,28 @@ npm run dev
 
 ## 🐳 Docker 一键部署 (Docker Deployment)
 
-使用预构建的 Docker 镜像，无需本地编译，一分钟完成部署！
+当前仓库默认通过 `Dockerfile` 本地构建镜像，这样可以直接包含你本地最新的前端和后端修改；如果你只是想快速体验，也可以改用预构建镜像。
 
 ### ⚡ Quick Start
 
 ```bash
-# 拉取镜像
-docker pull ghcr.io/leoz9/aiwardrobe:latest
+# 1) 配置环境变量
+cp backend/.env.example backend/.env
 
-# 运行容器 (需要先配置 .env 文件)
-docker run -d -p 8000:8000 \
+# 2) 本地构建并启动
+docker build -t aiwardrobe:local .
+docker run -d --name ai_wardrobe -p 8000:8000 \
+  --env-file backend/.env \
+  -v $(pwd)/backend/uploads:/app/backend/uploads \
+  -v $(pwd)/backend/data:/app/backend/data \
+  aiwardrobe:local
+```
+
+如果你想直接使用远端镜像，也可以执行：
+
+```bash
+docker pull ghcr.io/leoz9/aiwardrobe:latest
+docker run -d --name ai_wardrobe -p 8000:8000 \
   --env-file backend/.env \
   -v $(pwd)/backend/uploads:/app/backend/uploads \
   -v $(pwd)/backend/data:/app/backend/data \
@@ -166,7 +178,7 @@ docker run -d -p 8000:8000 \
 
 #### 前置要求
 
-- 安装 [Docker](https://www.docker.com/) 和 Docker Compose
+- 安装 [Docker](https://www.docker.com/) 和 Docker Compose Plugin
 
 #### 部署步骤
 
@@ -179,13 +191,14 @@ docker run -d -p 8000:8000 \
   ```
 2. **一键启动** ✨
   ```bash
-    cd .. && docker-compose up -d
+    cd .. && docker compose up --build -d
   ```
-  > 💡 现在直接从 GitHub Container Registry 拉取预构建镜像，无需本地 build！
+  > 💡 `docker-compose.yml` 现已默认走本地构建，适合开发和验证最新改动。
 3. **访问项目**
   - 🏠 **Web 应用**: [http://localhost:8000](http://localhost:8000)
   - 📄 **API 文档**: [http://localhost:8000/docs](http://localhost:8000/docs)
-  > ⚠️ **注意**: 数据（数据库和上传图片）将持久化保存在 `backend/data` 和 `backend/uploads` 目录中。
+  - ❤️ **健康检查**: [http://localhost:8000/health](http://localhost:8000/health)
+  > ⚠️ **注意**: 数据库和上传图片会持久化保存在 `backend/data` 和 `backend/uploads` 目录中。
 
 ## 📈 Star History
 
