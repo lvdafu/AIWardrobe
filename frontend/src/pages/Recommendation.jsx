@@ -9,15 +9,22 @@ export default function Recommendation() {
     const { t } = useTranslation()
     const [loading, setLoading] = useState(false)
     const [weather, setWeather] = useState(null)
+    const [horoscope, setHoroscope] = useState(null)
+    const [temperatureRule, setTemperatureRule] = useState(null)
     const [recommendation, setRecommendation] = useState('')
+    const [outfitSummary, setOutfitSummary] = useState('')
+    const [selectionReasons, setSelectionReasons] = useState({})
     const [suggestedTop, setSuggestedTop] = useState(null)
     const [suggestedBottom, setSuggestedBottom] = useState(null)
+    const [suggestedShoes, setSuggestedShoes] = useState(null)
+    const [suggestedAccessories, setSuggestedAccessories] = useState([])
+    const [purchaseSuggestions, setPurchaseSuggestions] = useState([])
 
     const [cityQuery, setCityQuery] = useState('')
     const [searchResults, setSearchResults] = useState([])
     const [selectedCity, setSelectedCity] = useState({
-        name: '上海',
-        id: '101020100'
+        name: '上海, 上海市, 中国',
+        id: '上海, 上海市, 中国'
     })
     const [showCityPicker, setShowCityPicker] = useState(false)
     const [searchingCities, setSearchingCities] = useState(false)
@@ -25,6 +32,32 @@ export default function Recommendation() {
     const cityInputRef = useRef(null)
 
     const [displayedRecommendation, setDisplayedRecommendation] = useState('')
+
+    useEffect(() => {
+        const fetchDefaultCity = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/config`)
+                if (!response.ok) {
+                    return
+                }
+
+                const data = await response.json()
+                const location = (data.weather_location || '').trim()
+                if (!location) {
+                    return
+                }
+
+                setSelectedCity({
+                    name: location,
+                    id: location
+                })
+            } catch (error) {
+                console.error('Failed to fetch default city config:', error)
+            }
+        }
+
+        void fetchDefaultCity()
+    }, [])
 
     useEffect(() => {
         if (!recommendation) {
@@ -86,7 +119,6 @@ export default function Recommendation() {
             return
         }
 
-        // 使用 requestAnimationFrame，确保下拉渲染后再聚焦输入框
         const rafId = requestAnimationFrame(() => {
             cityInputRef.current?.focus()
         })
@@ -105,7 +137,6 @@ export default function Recommendation() {
         }
 
         document.addEventListener('mousedown', handleOutsidePointerDown)
-
         return () => {
             document.removeEventListener('mousedown', handleOutsidePointerDown)
         }
@@ -142,10 +173,18 @@ export default function Recommendation() {
             const response = await fetch(`${API_BASE}/recommendation?location=${encodeURIComponent(location)}`)
             if (response.ok) {
                 const data = await response.json()
-                setWeather(data.weather)
-                setRecommendation(data.recommendation_text)
-                setSuggestedTop(data.suggested_top)
-                setSuggestedBottom(data.suggested_bottom)
+                setWeather(data.weather || null)
+                setHoroscope(data.horoscope || null)
+                setTemperatureRule(data.temperature_rule || null)
+                setRecommendation(data.recommendation_text || '')
+                setOutfitSummary(data.outfit_summary || '')
+                setSelectionReasons(data.selection_reasons || {})
+                setSuggestedTop(data.suggested_top || null)
+                setSuggestedBottom(data.suggested_bottom || null)
+                setSuggestedShoes(data.suggested_shoes || null)
+                setSuggestedAccessories(data.suggested_accessories || [])
+                setPurchaseSuggestions(data.purchase_suggestions || [])
+
                 if (preferredName) {
                     setSelectedCity({
                         name: preferredName,
@@ -208,9 +247,37 @@ export default function Recommendation() {
         return iconMap[icon] || '🌤️'
     }
 
+    const renderClothingCard = (item, label, reason) => {
+        if (!item) {
+            return null
+        }
+        return (
+            <div className="card group overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800">
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{label}</span>
+                </div>
+                <div className="aspect-square bg-zinc-100/50 dark:bg-zinc-800/50 p-4 border-b border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
+                    <img
+                        src={`${API_BASE.replace('/api', '')}${item.image_url}`}
+                        alt={item.item}
+                        className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-500"
+                    />
+                </div>
+                <div className="p-3">
+                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{item.item}</div>
+                    {item.description && (
+                        <div className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{item.description}</div>
+                    )}
+                    {reason && (
+                        <div className="text-xs text-zinc-500 mt-2 leading-relaxed">{reason}</div>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col pt-safe pb-24 relative overflow-hidden">
-            {/* Background Blur Elements */}
             <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-100 dark:bg-blue-900/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-30 pointer-events-none"></div>
             <div className="absolute bottom-[20%] left-[-10%] w-72 h-72 bg-purple-100 dark:bg-purple-900/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-30 pointer-events-none"></div>
 
@@ -295,7 +362,7 @@ export default function Recommendation() {
                     <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mb-6 shadow-[0_0_40px_rgba(37,99,235,0.2)]">
                         <Sparkles size={36} />
                     </div>
-                    <h2 className="text-2xl font-serif font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight leading-tight">{t('recommendation.getTitle')}<br/>{t('recommendation.getSubtitle')}</h2>
+                    <h2 className="text-2xl font-serif font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight leading-tight">{t('recommendation.getTitle')}<br />{t('recommendation.getSubtitle')}</h2>
                     <p className="text-zinc-500 text-sm mb-8 leading-relaxed max-w-[260px] mx-auto">{t('recommendation.description')}</p>
                     <button
                         className="btn-primary w-full max-w-xs shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 py-3.5 rounded-xl border-none focus:ring-blue-500/50"
@@ -348,6 +415,42 @@ export default function Recommendation() {
                         </div>
                     </div>
 
+                    {horoscope && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <div className="text-xs text-zinc-400">{t('recommendation.horoscopeSign')}</div>
+                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{horoscope.zodiac_name || t('home.unknownZodiac')}</div>
+                            </div>
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <div className="text-xs text-zinc-400">{t('recommendation.mood')}</div>
+                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{horoscope.mood}</div>
+                            </div>
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <div className="text-xs text-zinc-400">{t('recommendation.luckyColor')}</div>
+                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{horoscope.lucky_color}</div>
+                            </div>
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <div className="text-xs text-zinc-400">{t('recommendation.luckyNumber')}</div>
+                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{horoscope.lucky_number}</div>
+                            </div>
+                            <div className="col-span-2 sm:col-span-4 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                                <div className="text-xs text-zinc-400">{t('recommendation.horoscopeSummary')}</div>
+                                <div className="text-sm text-zinc-700 dark:text-zinc-300 mt-1 leading-relaxed">{horoscope.summary}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {temperatureRule && (
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                            <div className="text-xs text-zinc-400 mb-1">{t('recommendation.temperatureRule')}</div>
+                            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{temperatureRule.label}</div>
+                            <div className="text-xs text-zinc-500 mt-2">{temperatureRule.advice}</div>
+                            {temperatureRule.allowed_seasons?.length > 0 && (
+                                <div className="text-xs text-zinc-500 mt-2">{t('recommendation.allowedSeasons')}: {temperatureRule.allowed_seasons.join(' / ')}</div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pl-1">
                             <div className="flex items-center gap-2">
@@ -369,51 +472,73 @@ export default function Recommendation() {
                         </div>
                     </div>
 
-                    {(suggestedTop || suggestedBottom) && (
+                    {outfitSummary && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4 text-sm text-blue-700 dark:text-blue-200">
+                            <span className="font-semibold">{t('recommendation.outfitSummary')}:</span> {outfitSummary}
+                        </div>
+                    )}
+
+                    {(suggestedTop || suggestedBottom || suggestedShoes) && (
                         <div className="space-y-4 pt-2">
                             <h3 className="font-serif font-bold text-zinc-900 dark:text-zinc-100 tracking-tight text-lg pl-1">{t('recommendation.suggestedCombo')}</h3>
-                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                {suggestedTop && (
-                                    <div className="card group overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800">
-                                            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('recommendation.topWear')}</span>
-                                        </div>
-                                        <div className="aspect-square bg-zinc-100/50 dark:bg-zinc-800/50 p-4 border-b border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
-                                            <img
-                                                src={`${API_BASE.replace('/api', '')}${suggestedTop.image_url}`}
-                                                alt={suggestedTop.item}
-                                                className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                        </div>
-                                        <div className="p-3">
-                                            <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{suggestedTop.item}</div>
-                                            {suggestedTop.description && (
-                                                <div className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{suggestedTop.description}</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                {renderClothingCard(suggestedTop, t('recommendation.topWear'), selectionReasons?.top)}
+                                {renderClothingCard(suggestedBottom, t('recommendation.bottomWear'), selectionReasons?.bottom)}
+                                {renderClothingCard(suggestedShoes, t('recommendation.shoesWear'), selectionReasons?.shoes)}
+                            </div>
+                        </div>
+                    )}
 
-                                {suggestedBottom && (
-                                    <div className="card group overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800">
-                                            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('recommendation.bottomWear')}</span>
+                    {suggestedAccessories.length > 0 && (
+                        <div className="space-y-3">
+                            <h3 className="font-serif font-bold text-zinc-900 dark:text-zinc-100 tracking-tight text-lg pl-1">{t('recommendation.accessories')}</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {suggestedAccessories.map((accessory, index) => (
+                                    <div key={`${accessory.name}-${index}`} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{accessory.name}</div>
+                                                <div className="text-xs text-zinc-500 mt-1 leading-relaxed">{accessory.reason}</div>
+                                            </div>
+                                            <span className={`text-[10px] px-2 py-1 rounded-full whitespace-nowrap ${
+                                                accessory.from_wardrobe
+                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                            }`}>
+                                                {accessory.from_wardrobe ? t('recommendation.fromWardrobe') : t('recommendation.needBuy')}
+                                            </span>
                                         </div>
-                                        <div className="aspect-square bg-zinc-100/50 dark:bg-zinc-800/50 p-4 border-b border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
-                                            <img
-                                                src={`${API_BASE.replace('/api', '')}${suggestedBottom.image_url}`}
-                                                alt={suggestedBottom.item}
-                                                className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                        </div>
-                                        <div className="p-3">
-                                            <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{suggestedBottom.item}</div>
-                                            {suggestedBottom.description && (
-                                                <div className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{suggestedBottom.description}</div>
-                                            )}
-                                        </div>
+                                        {accessory.item?.image_url && (
+                                            <div className="mt-3 h-24 bg-zinc-100/60 dark:bg-zinc-800/50 rounded-xl p-2">
+                                                <img
+                                                    src={`${API_BASE.replace('/api', '')}${accessory.item.image_url}`}
+                                                    alt={accessory.name}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {purchaseSuggestions.length > 0 && (
+                        <div className="space-y-3 pb-2">
+                            <h3 className="font-serif font-bold text-zinc-900 dark:text-zinc-100 tracking-tight text-lg pl-1">{t('recommendation.purchaseFallback')}</h3>
+                            <div className="space-y-3">
+                                {purchaseSuggestions.map((suggestion, index) => (
+                                    <div key={`${suggestion.category}-${index}`} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                                        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{suggestion.title}</div>
+                                        <div className="text-xs text-zinc-500 mt-1 leading-relaxed">{suggestion.reason}</div>
+                                        {suggestion.keywords?.length > 0 && (
+                                            <div className="text-xs text-zinc-500 mt-2">{t('recommendation.buyKeywords')}: {suggestion.keywords.join(' / ')}</div>
+                                        )}
+                                        {suggestion.horoscope_hint && (
+                                            <div className="text-xs text-blue-600 dark:text-blue-300 mt-2">{suggestion.horoscope_hint}</div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
