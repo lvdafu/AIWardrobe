@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from services.weather import get_weather
 from services.recommendation import get_ai_recommendation
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -14,9 +14,16 @@ router = APIRouter()
 class RecommendationResponse(BaseModel):
     """推荐响应"""
     weather: dict
+    horoscope: Optional[dict] = None
+    temperature_rule: Optional[dict] = None
     recommendation_text: str
+    outfit_summary: Optional[str] = None
+    selection_reasons: Optional[dict] = None
     suggested_top: Optional[dict] = None
     suggested_bottom: Optional[dict] = None
+    suggested_shoes: Optional[dict] = None
+    suggested_accessories: list[dict] = Field(default_factory=list)
+    purchase_suggestions: list[dict] = Field(default_factory=list)
 
 
 @router.get("/recommendation", response_model=RecommendationResponse)
@@ -24,7 +31,11 @@ async def get_outfit_recommendation(
     location: str = Query(
         default="101020100",
         description="LocationID 或 经纬度坐标(如 '116.41,39.92')"
-    )
+    ),
+    zodiac_sign: Optional[str] = Query(
+        default=None,
+        description="可选，临时指定星座（会覆盖设置中的星座）"
+    ),
 ):
     """
     获取AI穿搭推荐
@@ -49,6 +60,6 @@ async def get_outfit_recommendation(
         raise HTTPException(status_code=500, detail="获取天气信息失败")
     
     # 获取AI推荐
-    recommendation = await get_ai_recommendation(weather)
+    recommendation = await get_ai_recommendation(weather, zodiac_sign=zodiac_sign)
     
     return recommendation
