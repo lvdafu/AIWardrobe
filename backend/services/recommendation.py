@@ -144,7 +144,11 @@ def score_item(
     temperature_profile: dict[str, Any],
 ) -> tuple[int, list[str]]:
     score = 5
-    reasons = [f"季节标签匹配{temperature_profile['label']}温度策略"]
+    if is_temperature_compatible(item, temperature_profile["allowed_seasons"]):
+        score += 3
+        reasons = [f"季节标签匹配{temperature_profile['label']}温度策略"]
+    else:
+        reasons = [f"季节标签未完全命中{temperature_profile['label']}策略，作为兜底候选"]
 
     lucky_color = horoscope.get("lucky_color", "")
     color_tokens = build_color_tokens(lucky_color)
@@ -298,10 +302,12 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
     temperature_profile = build_temperature_profile(weather)
 
     by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
+    all_by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
     for item in all_clothes:
         category = normalize_category_value(str(item.get("category", "")))
         if category not in by_category:
             continue
+        all_by_category[category].append(item)
         if is_temperature_compatible(item, temperature_profile["allowed_seasons"]):
             by_category[category].append(item)
 
@@ -317,9 +323,28 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
             weather=weather,
             temperature_profile=temperature_profile,
         )
+        used_fallback = False
+        if chosen is None and category == "shoes" and all_by_category["shoes"]:
+            fallback_item, fallback_reason = pick_best_item(
+                all_by_category["shoes"],
+                category=category,
+                horoscope=horoscope,
+                weather=weather,
+                temperature_profile=temperature_profile,
+            )
+            if fallback_item is not None:
+                chosen = fallback_item
+                fallback_prefix = "衣柜暂无完全匹配当前温度策略的鞋履，已从现有鞋履中选择最合适的一双"
+                reason = f"{fallback_prefix}；{fallback_reason}" if fallback_reason else fallback_prefix
+                used_fallback = True
+
         selected[category] = chosen
         selection_reasons[category] = reason
         if chosen is None:
+            purchase_suggestions.append(
+                build_purchase_suggestion(category, temperature_profile, horoscope)
+            )
+        elif used_fallback:
             purchase_suggestions.append(
                 build_purchase_suggestion(category, temperature_profile, horoscope)
             )

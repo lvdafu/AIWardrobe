@@ -2,56 +2,31 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Sparkles, RefreshCw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import { useRecommendation } from '../contexts/RecommendationContext'
 
 const API_BASE = `http://${window.location.hostname}:8000/api`
 
 export default function Recommendation() {
     const { t } = useTranslation()
-    const [loading, setLoading] = useState(false)
-    const [weather, setWeather] = useState(null)
-    const [horoscope, setHoroscope] = useState(null)
-    const [temperatureRule, setTemperatureRule] = useState(null)
-    const [recommendation, setRecommendation] = useState('')
-    const [outfitSummary, setOutfitSummary] = useState('')
-    const [selectionReasons, setSelectionReasons] = useState({})
-    const [suggestedTop, setSuggestedTop] = useState(null)
-    const [suggestedBottom, setSuggestedBottom] = useState(null)
-    const [suggestedShoes, setSuggestedShoes] = useState(null)
-    const [suggestedAccessories, setSuggestedAccessories] = useState([])
-    const [purchaseSuggestions, setPurchaseSuggestions] = useState([])
-
-    const [selectedCity, setSelectedCity] = useState({
-        name: '上海, 上海市, 中国',
-        id: '上海, 上海市, 中国'
-    })
+    const {
+        loading,
+        error,
+        weather,
+        horoscope,
+        temperatureRule,
+        recommendation,
+        outfitSummary,
+        selectionReasons,
+        suggestedTop,
+        suggestedBottom,
+        suggestedShoes,
+        suggestedAccessories,
+        purchaseSuggestions,
+        selectedCity,
+        fetchRecommendation
+    } = useRecommendation()
 
     const [displayedRecommendation, setDisplayedRecommendation] = useState('')
-
-    useEffect(() => {
-        const fetchDefaultCity = async () => {
-            try {
-                const response = await fetch(`${API_BASE}/config`)
-                if (!response.ok) {
-                    return
-                }
-
-                const data = await response.json()
-                const location = (data.weather_location || '').trim()
-                if (!location) {
-                    return
-                }
-
-                setSelectedCity({
-                    name: location,
-                    id: location
-                })
-            } catch (error) {
-                console.error('Failed to fetch default city config:', error)
-            }
-        }
-
-        void fetchDefaultCity()
-    }, [])
 
     useEffect(() => {
         if (!recommendation) {
@@ -75,45 +50,8 @@ export default function Recommendation() {
         return () => clearInterval(timer)
     }, [recommendation])
 
-    const fetchRecommendation = async (location, preferredName = null) => {
-        setLoading(true)
-        try {
-            const response = await fetch(`${API_BASE}/recommendation?location=${encodeURIComponent(location)}`)
-            if (response.ok) {
-                const data = await response.json()
-                setWeather(data.weather || null)
-                setHoroscope(data.horoscope || null)
-                setTemperatureRule(data.temperature_rule || null)
-                setRecommendation(data.recommendation_text || '')
-                setOutfitSummary(data.outfit_summary || '')
-                setSelectionReasons(data.selection_reasons || {})
-                setSuggestedTop(data.suggested_top || null)
-                setSuggestedBottom(data.suggested_bottom || null)
-                setSuggestedShoes(data.suggested_shoes || null)
-                setSuggestedAccessories(data.suggested_accessories || [])
-                setPurchaseSuggestions(data.purchase_suggestions || [])
-
-                if (preferredName) {
-                    setSelectedCity({
-                        name: preferredName,
-                        id: location
-                    })
-                } else if (data.weather?.location) {
-                    setSelectedCity({
-                        name: data.weather.location,
-                        id: location
-                    })
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch recommendation:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
     const refreshRecommendation = () => {
-        fetchRecommendation(selectedCity.id, selectedCity.name)
+        void fetchRecommendation(selectedCity.id, selectedCity.name)
     }
 
     const getWeatherIcon = (icon) => {
@@ -176,7 +114,7 @@ export default function Recommendation() {
                     <p className="text-zinc-500 text-sm mb-8 leading-relaxed max-w-[260px] mx-auto">{t('recommendation.description')}</p>
                     <button
                         className="btn-primary w-full max-w-xs shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 py-3.5 rounded-xl border-none focus:ring-blue-500/50"
-                        onClick={() => fetchRecommendation(selectedCity.id)}
+                        onClick={() => { void fetchRecommendation(selectedCity.id) }}
                     >
                         <Sparkles size={18} className="animate-pulse" />
                         <span className="font-semibold tracking-wide">{t('recommendation.generate')}</span>
@@ -200,6 +138,11 @@ export default function Recommendation() {
 
             {!loading && weather && (
                 <div className="flex-1 overflow-y-auto px-4 z-10 space-y-6">
+                    {error && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 rounded-2xl p-3 text-xs text-red-700 dark:text-red-200">
+                            {error}
+                        </div>
+                    )}
                     <div className="bg-gradient-to-br from-blue-500 to-accent text-white p-6 rounded-3xl shadow-lg relative overflow-hidden group">
                         <div className="absolute -right-4 -top-8 text-8xl opacity-10 blur-sm mix-blend-overlay group-hover:scale-110 transition-transform duration-700 pointer-events-none">
                             {getWeatherIcon(weather.icon)}
