@@ -43,7 +43,8 @@
     "removingBg": "正在移除背景...",
     "analyzing": "正在分析衣物...",
     "done": "完成!",
-    "uploadFailed": "上传失败"
+    "uploadFailed": "上传失败",
+    "batchResult": "批量导入完成：成功 {{success}} 张，失败 {{failed}} 张"
   },
   "wardrobe": {
     "tops": "上装",

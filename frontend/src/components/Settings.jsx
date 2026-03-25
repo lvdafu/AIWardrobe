@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon, Globe, Sparkles, MapPin } from 'lucide-react'
@@ -28,6 +28,32 @@ const DEFAULT_LOCATION = '上海, 上海市, 中国'
 const LOCATION_ID_REGEX = /^\d{9}$/
 const COORDINATE_LOCATION_REGEX = /^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$/
 const LOCATION_PART_SEPARATOR_REGEX = /[，,]+/
+const LOCATION_PRESETS = [
+    '上海, 上海市, 中国',
+    '北京, 北京市, 中国',
+    '南京, 江苏, 中国',
+    '杭州, 浙江, 中国',
+    '广州, 广东, 中国',
+    '深圳, 广东, 中国'
+]
+
+const formatLocationCandidate = (city) => {
+    const name = (city?.name || '').trim()
+    const state = (city?.adm1 || city?.adm2 || '').trim()
+    const country = (city?.country || '').trim()
+    if (!name || !state || !country) return null
+
+    const value = `${name}, ${state}, ${country}`
+    const labelParts = [city.name]
+    if (city.adm2 && city.adm2 !== city.name) labelParts.push(city.adm2)
+    if (city.adm1 && city.adm1 !== city.adm2 && city.adm1 !== city.name) labelParts.push(city.adm1)
+    if (city.country) labelParts.push(city.country)
+
+    return {
+        value,
+        label: labelParts.filter(Boolean).join(' · ')
+    }
+}
 
 const isCompleteLocationInput = (location) => {
     const raw = (location || '').trim()
@@ -61,6 +87,10 @@ const Settings = ({ isOpen, onClose, onSave }) => {
     const [hasExistingKey, setHasExistingKey] = useState(false)
     const [hasRemoveBgKey, setHasRemoveBgKey] = useState(false)
     const [showModelSelect, setShowModelSelect] = useState(false)
+    const [locationSuggestions, setLocationSuggestions] = useState([])
+    const [searchingLocations, setSearchingLocations] = useState(false)
+    const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+    const locationPickerRef = useRef(null)
 
     const API_BASE = `http://${window.location.hostname}:8000/api`
 
@@ -75,6 +105,71 @@ const Settings = ({ isOpen, onClose, onSave }) => {
             document.body.style.overflow = ''
         }
     }, [isOpen])
+
+    useEffect(() => {
+        if (!showLocationDropdown) {
+            return
+        }
+
+        const handleOutsidePointerDown = (event) => {
+            if (locationPickerRef.current && !locationPickerRef.current.contains(event.target)) {
+                setShowLocationDropdown(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleOutsidePointerDown)
+        return () => {
+            document.removeEventListener('mousedown', handleOutsidePointerDown)
+        }
+    }, [showLocationDropdown])
+
+    useEffect(() => {
+        if (!showLocationDropdown) {
+            return
+        }
+
+        const query = (config.weather_location || '').trim()
+        const filteredPresets = LOCATION_PRESETS
+            .filter(location => !query || location.toLowerCase().includes(query.toLowerCase()))
+            .map(location => ({ value: location, label: location }))
+
+        const timer = setTimeout(async () => {
+            if (!query) {
+                setLocationSuggestions(filteredPresets)
+                setSearchingLocations(false)
+                return
+            }
+
+            setSearchingLocations(true)
+            try {
+                const response = await fetch(`${API_BASE}/cities?query=${encodeURIComponent(query)}&limit=10`)
+                if (!response.ok) {
+                    setLocationSuggestions(filteredPresets)
+                    return
+                }
+                const cities = await response.json()
+                const cityOptions = (cities || [])
+                    .map(formatLocationCandidate)
+                    .filter(Boolean)
+
+                const deduped = []
+                const seen = new Set()
+                for (const item of [...filteredPresets, ...cityOptions]) {
+                    if (seen.has(item.value)) continue
+                    seen.add(item.value)
+                    deduped.push(item)
+                }
+                setLocationSuggestions(deduped)
+            } catch (error) {
+                console.error('Failed to search city suggestions:', error)
+                setLocationSuggestions(filteredPresets)
+            } finally {
+                setSearchingLocations(false)
+            }
+        }, 250)
+
+        return () => clearTimeout(timer)
+    }, [config.weather_location, showLocationDropdown, API_BASE])
 
     const fetchConfig = async () => {
         try {
@@ -301,18 +396,58 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                                 <MapPin size={16} className="text-accent" />
                                 {t('settings.defaultCity')}
                             </label>
-                            <input
-                                type="text"
-                                className="input-field"
-                                value={config.weather_location}
-                                onChange={e => {
-                                    setConfig(prev => ({ ...prev, weather_location: e.target.value }))
-                                    if (testResult?.success === false) {
-                                        setTestResult(null)
-                                    }
-                                }}
-                                placeholder={t('settings.defaultCityPlaceholder')}
-                            />
+                            <div className="relative" ref={locationPickerRef}>
+                                <input
+                                    type="text"
+                                    className="input-field pr-10"
+                                    value={config.weather_location}
+                                    onFocus={() => setShowLocationDropdown(true)}
+                                    onChange={e => {
+                                        setConfig(prev => ({ ...prev, weather_location: e.target.value }))
+                                        setShowLocationDropdown(true)
+                                        if (testResult?.success === false) {
+                                            setTestResult(null)
+                                        }
+                                    }}
+                                    placeholder={t('settings.defaultCityPlaceholder')}
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                                    onClick={() => setShowLocationDropdown(open => !open)}
+                                    aria-label={t('settings.defaultCity')}
+                                >
+                                    ▾
+                                </button>
+
+                                {showLocationDropdown && (
+                                    <div className="absolute z-40 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg">
+                                        {locationSuggestions.length > 0 ? (
+                                            locationSuggestions.map(option => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    className="w-full text-left px-3 py-2.5 text-sm text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                                                    onMouseDown={(event) => {
+                                                        event.preventDefault()
+                                                        setConfig(prev => ({ ...prev, weather_location: option.value }))
+                                                        setShowLocationDropdown(false)
+                                                        if (testResult?.success === false) {
+                                                            setTestResult(null)
+                                                        }
+                                                    }}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))
+                                        ) : searchingLocations ? (
+                                            <div className="px-3 py-2.5 text-sm text-zinc-500">{t('recommendation.searching')}</div>
+                                        ) : (
+                                            <div className="px-3 py-2.5 text-sm text-zinc-500">{t('recommendation.noCity')}</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 

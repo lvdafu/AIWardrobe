@@ -43,7 +43,8 @@
     "removingBg": "Removing background...",
     "analyzing": "Analyzing clothing...",
     "done": "Done!",
-    "uploadFailed": "Upload failed"
+    "uploadFailed": "Upload failed",
+    "batchResult": "Batch import completed: {{success}} succeeded, {{failed}} failed"
   },
   "wardrobe": {
     "tops": "Tops",

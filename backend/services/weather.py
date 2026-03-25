@@ -77,22 +77,96 @@ COMMON_CITIES = [
 LEGACY_CITY_BY_ID = {city["legacy_id"]: city for city in COMMON_CITIES}
 
 LOCATION_SUFFIXES = (
-    "特别行政区", "自治区", "自治州", "地区", "盟", "省", "市", "区", "县"
+    "特别行政区", "自治区", "自治州", "地区", "盟", "省", "市", "区", "县", "都"
 )
 LOCATION_PART_SEPARATOR_REGEX = re.compile(r"[，,]+")
+CHINESE_CHAR_REGEX = re.compile(r"[\u4e00-\u9fff]")
+LOCATION_TOKEN_SEPARATOR_REGEX = re.compile(r"[;；/|｜]+")
+TRADITIONAL_TO_SIMPLIFIED_MAP = str.maketrans({
+    "東": "东",
+    "倫": "伦",
+    "臺": "台",
+    "紐": "纽",
+    "約": "约",
+})
+NOMINATIM_USER_AGENT = "AIWardrobe/1.0 (city-search)"
 DEFAULT_LOCATION_QUERY = "上海, 上海市, 中国"
 
 
 def normalize_location_query(query: str) -> str:
     """归一化地区输入，提升匹配率。"""
     normalized = (query or "").strip().lower()
-    normalized = re.sub(r"[\s,，/·\-]+", "", normalized)
+    normalized = normalized.translate(TRADITIONAL_TO_SIMPLIFIED_MAP)
+    normalized = re.sub(r"[\s,，/·\-;；|｜]+", "", normalized)
 
     for suffix in LOCATION_SUFFIXES:
         if normalized.endswith(suffix):
             normalized = normalized[: -len(suffix)]
 
     return normalized
+
+
+def split_location_tokens(value: str) -> List[str]:
+    raw_value = (value or "").strip()
+    if not raw_value:
+        return []
+
+    tokens = [raw_value]
+    for token in LOCATION_TOKEN_SEPARATOR_REGEX.split(raw_value):
+        stripped = token.strip()
+        if stripped and stripped not in tokens:
+            tokens.append(stripped)
+    return tokens
+
+
+def build_geocoding_queries(query: str) -> List[str]:
+    """
+    构建通用地理编码查询词变体，提升不同地区命名习惯下的命中率。
+    """
+    raw_query = (query or "").strip()
+    if not raw_query:
+        return []
+
+    queries = [raw_query]
+    parts = [
+        part.strip()
+        for part in LOCATION_PART_SEPARATOR_REGEX.split(raw_query)
+        if part.strip()
+    ]
+    primary_part = parts[0] if parts else raw_query
+
+    if primary_part != raw_query:
+        queries.append(primary_part)
+
+    if CHINESE_CHAR_REGEX.search(primary_part):
+        base_part = primary_part
+        for suffix in LOCATION_SUFFIXES:
+            if base_part.endswith(suffix) and len(base_part) > len(suffix):
+                base_part = base_part[: -len(suffix)]
+                queries.append(base_part)
+                break
+
+        if not any(primary_part.endswith(suffix) for suffix in LOCATION_SUFFIXES):
+            queries.append(f"{primary_part}市")
+
+    # 去重并保持顺序
+    deduped: List[str] = []
+    seen = set()
+    for value in queries:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
+
+
+def detect_geocoding_language(query: str) -> str:
+    """
+    根据用户输入粗略推断检索语言。
+    - 包含 CJK 字符时使用中文返回
+    - 其他情况使用英文返回
+    """
+    return "zh" if CHINESE_CHAR_REGEX.search(query or "") else "en"
 
 
 def is_complete_text_location(location: str) -> bool:
@@ -224,22 +298,38 @@ def city_match_score(city: CityInfo, query: str) -> int:
 
     best_score = 0
     for candidate in candidates:
-        normalized_candidate = normalize_location_query(candidate or "")
-        if not normalized_candidate:
-            continue
+        for token in split_location_tokens(candidate or ""):
+            normalized_candidate = normalize_location_query(token)
+            if not normalized_candidate:
+                continue
 
-        if normalized_query == normalized_candidate:
-            best_score = max(best_score, 100)
-        elif normalized_query in normalized_candidate:
-            best_score = max(best_score, 70)
-        elif normalized_candidate in normalized_query:
-            best_score = max(best_score, 55)
+            if normalized_query == normalized_candidate:
+                best_score = max(best_score, 100)
+            elif normalized_query in normalized_candidate:
+                best_score = max(best_score, 70)
+            elif normalized_candidate in normalized_query:
+                best_score = max(best_score, 55)
 
-    if normalize_location_query(city.name) and normalize_location_query(city.name) in normalized_query:
+    city_name_tokens = split_location_tokens(city.name)
+    city_adm2_tokens = split_location_tokens(city.adm2)
+    city_adm1_tokens = split_location_tokens(city.adm1)
+    if any(
+        normalize_location_query(token)
+        and normalize_location_query(token) in normalized_query
+        for token in city_name_tokens
+    ):
         best_score += 20
-    if normalize_location_query(city.adm2) and normalize_location_query(city.adm2) in normalized_query:
+    if any(
+        normalize_location_query(token)
+        and normalize_location_query(token) in normalized_query
+        for token in city_adm2_tokens
+    ):
         best_score += 10
-    if normalize_location_query(city.adm1) and normalize_location_query(city.adm1) in normalized_query:
+    if any(
+        normalize_location_query(token)
+        and normalize_location_query(token) in normalized_query
+        for token in city_adm1_tokens
+    ):
         best_score += 5
 
     return best_score
@@ -261,10 +351,109 @@ def _city_from_common(city_data: dict) -> CityInfo:
     )
 
 
+def _merge_ranked_city(
+    ranked_cities: dict[str, tuple[CityInfo, int]],
+    city: CityInfo,
+    score: int,
+) -> None:
+    existed = ranked_cities.get(city.id)
+    if not existed or score > existed[1]:
+        ranked_cities[city.id] = (city, score)
+
+
+def _city_from_open_meteo_row(row: dict) -> Optional[tuple[CityInfo, int]]:
+    latitude = row.get("latitude")
+    longitude = row.get("longitude")
+    if latitude is None or longitude is None:
+        return None
+
+    city = CityInfo(
+        name=str(row.get("name") or "未知地区"),
+        id=format_coordinate_id(float(latitude), float(longitude)),
+        adm1=str(row.get("admin1") or ""),
+        adm2=str(row.get("admin2") or ""),
+        country=str(row.get("country") or ""),
+        lat=str(latitude),
+        lon=str(longitude),
+    )
+
+    rank_bonus = 0
+    feature_code = str(row.get("feature_code") or "")
+    if feature_code == "PPLC":
+        rank_bonus += 30
+    elif feature_code.startswith("PPLA"):
+        rank_bonus += 22
+    elif feature_code.startswith("PPL"):
+        rank_bonus += 10
+
+    population = row.get("population")
+    if isinstance(population, (int, float)):
+        rank_bonus += min(int(float(population) // 500000), 12)
+
+    return city, rank_bonus
+
+
+def _city_from_nominatim_row(row: dict) -> Optional[tuple[CityInfo, int]]:
+    try:
+        latitude = float(str(row.get("lat")))
+        longitude = float(str(row.get("lon")))
+    except (TypeError, ValueError):
+        return None
+
+    address = row.get("address") if isinstance(row.get("address"), dict) else {}
+    name = str(
+        row.get("name")
+        or address.get("city")
+        or address.get("town")
+        or address.get("municipality")
+        or address.get("county")
+        or address.get("state")
+        or "未知地区"
+    )
+    adm2 = str(
+        address.get("city")
+        or address.get("town")
+        or address.get("municipality")
+        or address.get("county")
+        or ""
+    )
+    adm1 = str(address.get("state") or address.get("province") or address.get("region") or "")
+    country = str(address.get("country") or "")
+
+    city = CityInfo(
+        name=name,
+        id=format_coordinate_id(latitude, longitude),
+        adm1=adm1,
+        adm2=adm2,
+        country=country,
+        lat=f"{latitude}",
+        lon=f"{longitude}",
+    )
+
+    rank_bonus = 0
+    try:
+        importance = float(row.get("importance") or 0)
+    except (TypeError, ValueError):
+        importance = 0
+    importance = max(0.0, min(importance, 1.0))
+    rank_bonus += int(importance * 70)
+
+    addresstype = str(row.get("addresstype") or "")
+    if addresstype in ("city", "town", "municipality"):
+        rank_bonus += 18
+    elif addresstype in ("province", "state", "region"):
+        rank_bonus += 10
+
+    if str(row.get("category") or "") == "boundary":
+        rank_bonus += 4
+
+    return city, rank_bonus
+
+
 async def search_city(query: str, limit: int = 10) -> List[CityInfo]:
     """
     搜索城市（支持模糊查询）
-    优先使用 Open-Meteo 地理编码 API，失败则回退到内置城市列表。
+    综合 Open-Meteo 与 Nominatim 地理编码结果，失败时回退到内置城市列表。
     """
     normalized_query = normalize_location_query(query)
     if not normalized_query:
@@ -292,47 +481,86 @@ async def search_city(query: str, limit: int = 10) -> List[CityInfo]:
             )
         ]
 
-    # Open-Meteo Geocoding
+    # 多源 Geocoding（Open-Meteo + Nominatim）
+    geocoding_failed = False
+    ranked_cities: dict[str, tuple[CityInfo, int]] = {}
+    geocoding_queries = build_geocoding_queries(query)
+    geocoding_language = detect_geocoding_language(query)
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://geocoding-api.open-meteo.com/v1/search",
-                params={
-                    "name": query.strip(),
-                    "count": min(max(limit, 1), 20),
-                    "language": "zh",
-                    "format": "json",
-                },
-                timeout=10.0,
-            )
-            response.raise_for_status()
-            payload = response.json()
+        async with httpx.AsyncClient(
+            headers={"User-Agent": NOMINATIM_USER_AGENT}
+        ) as client:
+            for geocoding_query in geocoding_queries:
+                try:
+                    response = await client.get(
+                        "https://geocoding-api.open-meteo.com/v1/search",
+                        params={
+                            "name": geocoding_query,
+                            "count": min(max(limit, 1), 20),
+                            "language": geocoding_language,
+                            "format": "json",
+                        },
+                        timeout=10.0,
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                except Exception:
+                    geocoding_failed = True
+                    continue
 
-        cities: List[CityInfo] = []
-        for row in payload.get("results", []):
-            latitude = row.get("latitude")
-            longitude = row.get("longitude")
-            if latitude is None or longitude is None:
-                continue
+                for row in payload.get("results", []):
+                    city_with_bonus = _city_from_open_meteo_row(row)
+                    if not city_with_bonus:
+                        continue
+                    city, rank_bonus = city_with_bonus
+                    base_score = city_match_score(city, query)
+                    if base_score <= 0:
+                        continue
+                    _merge_ranked_city(ranked_cities, city, base_score + rank_bonus)
 
-            city = CityInfo(
-                name=str(row.get("name") or "未知地区"),
-                id=format_coordinate_id(float(latitude), float(longitude)),
-                adm1=str(row.get("admin1") or ""),
-                adm2=str(row.get("admin2") or ""),
-                country=str(row.get("country") or ""),
-                lat=str(latitude),
-                lon=str(longitude),
-            )
+            # Nominatim 更擅长多语种地名与别名检索，补充覆盖
+            nominatim_limit = min(max(limit * 2, 10), 20)
+            for nominatim_query in geocoding_queries[:2]:
+                try:
+                    response = await client.get(
+                        "https://nominatim.openstreetmap.org/search",
+                        params={
+                            "q": nominatim_query,
+                            "format": "jsonv2",
+                            "accept-language": geocoding_language,
+                            "addressdetails": 1,
+                            "limit": nominatim_limit,
+                        },
+                        timeout=10.0,
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                except Exception:
+                    geocoding_failed = True
+                    continue
 
-            if city_matches_query(city, query):
-                cities.append(city)
-
-        if cities:
-            cities.sort(key=lambda city: city_match_score(city, query), reverse=True)
-            return cities[:limit]
+                for row in payload:
+                    city_with_bonus = _city_from_nominatim_row(row)
+                    if not city_with_bonus:
+                        continue
+                    city, rank_bonus = city_with_bonus
+                    base_score = city_match_score(city, query)
+                    if base_score <= 0:
+                        continue
+                    _merge_ranked_city(ranked_cities, city, base_score + rank_bonus)
     except Exception as e:
+        geocoding_failed = True
         print(f"⚠️  Geocoding 查询失败，使用内置城市兜底: {e}")
+
+    if ranked_cities:
+        ranked_results = sorted(
+            ranked_cities.values(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        return [city for city, _ in ranked_results[:limit]]
+    if geocoding_failed:
+        print("⚠️  Geocoding 查询不可用，使用内置城市兜底")
 
     # 回退方案：内置城市模糊匹配
     matched_cities: List[CityInfo] = []

@@ -43,7 +43,8 @@
     "removingBg": "背景を除去中...",
     "analyzing": "衣類を分析中...",
     "done": "完了！",
-    "uploadFailed": "アップロード失敗"
+    "uploadFailed": "アップロード失敗",
+    "batchResult": "一括インポート完了：成功 {{success}} 件、失敗 {{failed}} 件"
   },
   "wardrobe": {
     "tops": "トップス",

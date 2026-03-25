@@ -31,7 +31,7 @@ export default function Upload({ onUploadSuccess }) {
         setIsDragging(false)
         const files = e.dataTransfer.files
         if (files.length > 0) {
-            uploadFile(files[0])
+            uploadFiles(Array.from(files))
         }
     }
 
@@ -83,7 +83,7 @@ export default function Upload({ onUploadSuccess }) {
         canvas.toBlob((blob) => {
             if (blob) {
                 const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' })
-                uploadFile(file)
+                uploadFiles([file])
                 stopCamera()
             }
         }, 'image/jpeg', 0.9)
@@ -92,60 +92,102 @@ export default function Upload({ onUploadSuccess }) {
     const handleFileChange = (e) => {
         const files = e.target.files
         if (files && files.length > 0) {
-            uploadFile(files[0])
+            uploadFiles(Array.from(files))
         }
         e.target.value = ''
     }
 
-    const uploadFile = async (file) => {
+    const uploadSingleFile = async (file, current = 1, total = 1) => {
         if (!file.type.startsWith('image/')) {
+            throw new Error(t('upload.selectImage'))
+        }
+
+        const stageLabel = (key) => (
+            total > 1
+                ? `${t(key)} (${current}/${total})`
+                : t(key)
+        )
+
+        const formData = new FormData()
+        formData.append('file', file)
+
+        setStatus(stageLabel('upload.removingBg'))
+
+        const response = await fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            body: formData
+        })
+
+        setStatus(stageLabel('upload.analyzing'))
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}))
+            throw new Error(error.detail || t('upload.uploadFailed'))
+        }
+
+        return response.json()
+    }
+
+    const uploadFiles = async (files) => {
+        if (!files || files.length === 0) return
+
+        const imageFiles = files.filter(file => file.type?.startsWith('image/'))
+        if (imageFiles.length === 0) {
             alert(t('upload.selectImage'))
             return
         }
 
         setIsUploading(true)
-        setProgress(10)
+        setProgress(0)
         setStatus(t('upload.uploading'))
 
-        const formData = new FormData()
-        formData.append('file', file)
+        const total = imageFiles.length
+        const successItems = []
+        const failedMessages = []
 
-        try {
-            setProgress(30)
-            setStatus(t('upload.removingBg'))
+        for (let i = 0; i < total; i += 1) {
+            const file = imageFiles[i]
+            const current = i + 1
+            const baseProgress = Math.round((i / total) * 100)
+            setProgress(Math.max(baseProgress, 5))
+            setStatus(
+                total > 1
+                    ? `${t('upload.uploading')} (${current}/${total})`
+                    : t('upload.uploading')
+            )
 
-            const response = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                body: formData
-            })
-
-            setProgress(70)
-            setStatus(t('upload.analyzing'))
-
-            if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.detail || t('upload.uploadFailed'))
+            try {
+                const data = await uploadSingleFile(file, current, total)
+                successItems.push(data)
+                setProgress(Math.round((current / total) * 100))
+            } catch (error) {
+                console.error('Upload error:', error)
+                failedMessages.push(`${file.name}: ${error.message}`)
             }
+        }
 
-            const data = await response.json()
+        setProgress(100)
+        setStatus(t('upload.done'))
 
-            setProgress(100)
-            setStatus(t('upload.done'))
-
-            setTimeout(() => {
-                setIsUploading(false)
-                setProgress(0)
-                setStatus('')
-                onUploadSuccess?.(data)
-            }, 500)
-
-        } catch (error) {
-            console.error('Upload error:', error)
-            alert(`${t('upload.uploadFailed')}: ${error.message}`)
+        setTimeout(() => {
             setIsUploading(false)
             setProgress(0)
             setStatus('')
-        }
+
+            if (total === 1) {
+                if (successItems.length === 1) {
+                    onUploadSuccess?.(successItems[0])
+                } else {
+                    alert(`${t('upload.uploadFailed')}: ${failedMessages[0] || t('upload.uploadFailed')}`)
+                }
+                return
+            }
+
+            alert(t('upload.batchResult', {
+                success: successItems.length,
+                failed: total - successItems.length
+            }))
+        }, 500)
     }
 
     if (showCamera) {
@@ -203,6 +245,7 @@ export default function Upload({ onUploadSuccess }) {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={handleFileChange}
                 />
