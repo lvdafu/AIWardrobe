@@ -57,6 +57,19 @@
     "delete": "删除",
     "searchPlaceholder": "搜索名称、描述..."
   },
+  "clothesDetail": {
+    "title": "衣物详情",
+    "loading": "正在加载详情...",
+    "notFound": "这件衣物不存在或已被删除。",
+    "loadFailed": "加载失败，请稍后重试。",
+    "retry": "重试",
+    "description": "详细描述",
+    "color": "颜色",
+    "style": "风格",
+    "season": "季节",
+    "usage": "使用场景",
+    "empty": "暂无"
+  },
   "filter": {
     "season": "季节",
     "style": "风格",

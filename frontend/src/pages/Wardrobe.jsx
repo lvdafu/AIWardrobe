@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import FilterBar from '../components/FilterBar'
 import { Trash2 } from 'lucide-react'
 
@@ -7,6 +8,7 @@ const API_BASE = `http://${window.location.hostname}:8000/api`
 
 export default function Wardrobe() {
     const { t } = useTranslation()
+    const navigate = useNavigate()
     const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [] })
     const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState({
@@ -115,7 +117,19 @@ export default function Wardrobe() {
                         ) : (
                             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
                                 {section.items.map(item => (
-                                    <div key={item.id} className="card group overflow-hidden hover:-translate-y-1 transition-transform duration-300">
+                                    <div
+                                        key={item.id}
+                                        className="card group overflow-hidden hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
+                                        onClick={() => navigate(`/clothes/${item.id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault()
+                                                navigate(`/clothes/${item.id}`)
+                                            }
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                    >
                                         <div className="relative aspect-square bg-zinc-100 dark:bg-zinc-800 p-4 flex items-center justify-center overflow-hidden">
                                             <img
                                                 src={`${API_BASE.replace('/api', '')}${item.image_url}`}
@@ -128,7 +142,10 @@ export default function Wardrobe() {
                                             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate pr-2">{item.item}</span>
                                             <button
                                                 className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-md transition-colors"
-                                                onClick={() => handleDelete(item.id)}
+                                                onClick={(event) => {
+                                                    event.stopPropagation()
+                                                    handleDelete(item.id)
+                                                }}
                                                 title={t('wardrobe.delete')}
                                             >
                                                 <Trash2 size={16} />

@@ -57,6 +57,19 @@
     "delete": "Delete",
     "searchPlaceholder": "Search name, description..."
   },
+  "clothesDetail": {
+    "title": "Clothing Detail",
+    "loading": "Loading detail...",
+    "notFound": "This clothing item does not exist or has been deleted.",
+    "loadFailed": "Failed to load detail. Please try again.",
+    "retry": "Retry",
+    "description": "Description",
+    "color": "Color",
+    "style": "Style",
+    "season": "Season",
+    "usage": "Usage",
+    "empty": "N/A"
+  },
   "filter": {
     "season": "Season",
     "style": "Style",
