@@ -7,6 +7,7 @@ from domain.clothes import ClothesItem, WardrobeResponse, ClothesCreate
 from domain.clothes import normalize_category_value
 from storage.db import (
     get_all_clothes,
+    get_clothes_by_category,
     get_clothes_by_id,
     delete_clothes,
     update_clothes
@@ -24,10 +25,21 @@ async def get_wardrobe():
     """
     all_clothes = await get_all_clothes()
     
-    tops = [c for c in all_clothes if normalize_category_value(c.category) == "top"]
-    bottoms = [c for c in all_clothes if normalize_category_value(c.category) == "bottom"]
-    shoes = [c for c in all_clothes if normalize_category_value(c.category) == "shoes"]
-    accessories = [c for c in all_clothes if normalize_category_value(c.category) == "accessory"]
+    tops: list[ClothesItem] = []
+    bottoms: list[ClothesItem] = []
+    shoes: list[ClothesItem] = []
+    accessories: list[ClothesItem] = []
+
+    for clothes in all_clothes:
+        category = normalize_category_value(clothes.category)
+        if category == "top":
+            tops.append(clothes)
+        elif category == "bottom":
+            bottoms.append(clothes)
+        elif category == "shoes":
+            shoes.append(clothes)
+        elif category == "accessory":
+            accessories.append(clothes)
     
     return WardrobeResponse(
         tops=tops,
@@ -52,8 +64,7 @@ async def get_wardrobe_category(category: str):
             detail="类别必须是 top, bottom, shoes 或 accessory"
         )
     
-    all_clothes = await get_all_clothes()
-    return [item for item in all_clothes if normalize_category_value(item.category) == category]
+    return await get_clothes_by_category(category)
 
 
 @router.get("/clothes/{clothes_id}", response_model=ClothesItem)

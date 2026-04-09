@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { API_BASE } from '../utils/api'
 const DEFAULT_LOCATION = '上海, 上海市, 中国'
 
 const RecommendationContext = createContext(null)

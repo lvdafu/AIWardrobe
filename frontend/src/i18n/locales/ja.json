@@ -29,7 +29,15 @@
     "season": "シーズン",
     "seasonPlaceholder": "例: 夏, 秋（カンマ区切り）",
     "description": "詳細説明",
-    "descriptionPlaceholder": "この服の詳細..."
+    "descriptionPlaceholder": "この服の詳細...",
+    "heroTag": "クイックスタート",
+    "heroTitle": "3ステップで今日のコーデ",
+    "heroSubtitle": "衣類をアップロードすると、AIが自動分析して提案します。",
+    "goWardrobe": "衣装棚を見る",
+    "goRecommendation": "提案を見る",
+    "stepUpload": "アップロード",
+    "stepEdit": "編集",
+    "stepRecommend": "提案"
   },
   "upload": {
     "title": "新しい衣類を追加",
@@ -131,7 +139,9 @@
     "fromWardrobe": "手持ちあり",
     "needBuy": "購入推奨",
     "purchaseFallback": "不足分の購入提案",
-    "buyKeywords": "おすすめアイテム"
+    "buyKeywords": "おすすめアイテム",
+    "goOutfit": "コーデへ",
+    "goWardrobe": "衣装棚へ"
   },
   "home": {
     "today": "今日",

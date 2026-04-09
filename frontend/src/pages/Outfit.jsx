@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Shuffle } from 'lucide-react'
 
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { API_BASE, toImageUrl } from '../utils/api'
 
 const OutfitPart = ({ items, label, proportion, currentIndex, onPrev, onNext, emptyText }) => {
     if (!items || items.length === 0) {
@@ -32,7 +32,7 @@ const OutfitPart = ({ items, label, proportion, currentIndex, onPrev, onNext, em
 
             <div className="relative min-h-0 flex-1 flex items-center justify-center p-2.5 bg-zinc-100/50 dark:bg-zinc-800/50 overflow-hidden">
                 <img
-                    src={`${API_BASE.replace('/api', '')}${currentItem.image_url}`}
+                    src={toImageUrl(currentItem.image_url)}
                     alt={currentItem.item}
                     className="w-[72%] h-[72%] object-contain drop-shadow-md group-hover:scale-[1.02] transition-transform duration-500"
                 />
@@ -40,13 +40,13 @@ const OutfitPart = ({ items, label, proportion, currentIndex, onPrev, onNext, em
                 {items.length > 1 && (
                     <>
                         <button
-                            className="absolute left-1.5 w-7 h-7 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-accent hover:bg-white dark:hover:bg-zinc-700 transition-all opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 z-10"
+                            className="absolute left-1.5 w-7 h-7 rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-accent hover:bg-white dark:hover:bg-zinc-700 transition-all opacity-90 sm:opacity-0 sm:group-hover:opacity-100 hover:scale-105 active:scale-95 z-10"
                             onClick={onPrev}
                         >
                             <ChevronLeft size={16} />
                         </button>
                         <button
-                            className="absolute right-1.5 w-7 h-7 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-accent hover:bg-white dark:hover:bg-zinc-700 transition-all opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 z-10"
+                            className="absolute right-1.5 w-7 h-7 rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-accent hover:bg-white dark:hover:bg-zinc-700 transition-all opacity-90 sm:opacity-0 sm:group-hover:opacity-100 hover:scale-105 active:scale-95 z-10"
                             onClick={onNext}
                         >
                             <ChevronRight size={16} />
@@ -79,12 +79,14 @@ export default function Outfit() {
     })
 
     useEffect(() => {
-        fetchWardrobe()
+        const controller = new AbortController()
+        void fetchWardrobe(controller.signal)
+        return () => controller.abort()
     }, [])
 
-    const fetchWardrobe = async () => {
+    const fetchWardrobe = async (signal) => {
         try {
-            const response = await fetch(`${API_BASE}/wardrobe`)
+            const response = await fetch(`${API_BASE}/wardrobe`, { signal })
             if (response.ok) {
                 const data = await response.json()
                 setWardrobe({
@@ -95,9 +97,13 @@ export default function Outfit() {
                 })
             }
         } catch (error) {
-            console.error(error)
+            if (error.name !== 'AbortError') {
+                console.error(error)
+            }
         } finally {
-            setLoading(false)
+            if (!signal?.aborted) {
+                setLoading(false)
+            }
         }
     }
 

@@ -2,6 +2,7 @@
 
 # 👕 AI Smart Wardrobe
 
+[![GitHub Stars](https://img.shields.io/github/stars/leoz9/AIWardrobe?style=social)](https://github.com/leoz9/AIWardrobe/stargazers)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://ghcr.io/leoz9/aiwardrobe)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org)
@@ -32,15 +33,21 @@ Upload clothing photos, remove backgrounds automatically, classify garments with
 | **AI Recommendations** | Supports Gemini and OpenAI-compatible providers for personalized outfit generation |
 | **Responsive UI** | Optimized for desktop, tablet, and mobile with a modern Tailwind CSS interface |
 
-## 📸 Screenshots
+## 📸 Screenshots (New UI)
+
+<div align="center">
+  <img src="docs/images/screenshot_landing.jpg" width="820" alt="Home / Landing (New UI)" />
+</div>
 
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="docs/images/screenshot_input.jpg" width="200" /><br /><b>New Item Entry</b></td>
-<td align="center"><img src="docs/images/screenshot_wardrobe.jpg" width="200" /><br /><b>Wardrobe View</b></td>
-<td align="center"><img src="docs/images/screenshot_recommendation.jpg" width="200" /><br /><b>AI Recommendation</b></td>
-<td align="center"><img src="docs/images/screenshot_detail.jpg" width="200" /><br /><b>Outfit Detail</b></td>
+<td align="center"><img src="docs/images/screenshot_input.jpg" width="280" /><br /><b>New Item Entry</b></td>
+<td align="center"><img src="docs/images/screenshot_wardrobe.jpg" width="280" /><br /><b>Wardrobe View</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/images/screenshot_recommendation.jpg" width="280" /><br /><b>AI Recommendation</b></td>
+<td align="center"><img src="docs/images/screenshot_detail.jpg" width="280" /><br /><b>Clothes Detail</b></td>
 </tr>
 </table>
 </div>
@@ -152,11 +159,11 @@ Data is persisted in `backend/data` and `backend/uploads`.
 
 ## ⭐ Star History
 
-<a href="https://www.star-history.com/#leoz9/AIWardrobe&type=date">
+<a href="https://www.star-history.com/#leoz9/AIWardrobe&type=Date">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date&theme=dark" />
     <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" width="860" />
   </picture>
 </a>
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon, Globe, Sparkles, MapPin } from 'lucide-react'
+import { API_BASE } from '../utils/api'
 
 const LANGUAGES = [
     { code: 'zh', label: '中文' },
@@ -92,15 +93,18 @@ const Settings = ({ isOpen, onClose, onSave }) => {
     const [showLocationDropdown, setShowLocationDropdown] = useState(false)
     const locationPickerRef = useRef(null)
 
-    const API_BASE = `http://${window.location.hostname}:8000/api`
-
     useEffect(() => {
         if (isOpen) {
-            fetchConfig()
+            const controller = new AbortController()
+            void fetchConfig(controller.signal)
             document.body.style.overflow = 'hidden'
-        } else {
-            document.body.style.overflow = ''
+            return () => {
+                controller.abort()
+                document.body.style.overflow = ''
+            }
         }
+
+        document.body.style.overflow = ''
         return () => {
             document.body.style.overflow = ''
         }
@@ -133,6 +137,7 @@ const Settings = ({ isOpen, onClose, onSave }) => {
             .filter(location => !query || location.toLowerCase().includes(query.toLowerCase()))
             .map(location => ({ value: location, label: location }))
 
+        const controller = new AbortController()
         const timer = setTimeout(async () => {
             if (!query) {
                 setLocationSuggestions(filteredPresets)
@@ -142,7 +147,9 @@ const Settings = ({ isOpen, onClose, onSave }) => {
 
             setSearchingLocations(true)
             try {
-                const response = await fetch(`${API_BASE}/cities?query=${encodeURIComponent(query)}&limit=10`)
+                const response = await fetch(`${API_BASE}/cities?query=${encodeURIComponent(query)}&limit=10`, {
+                    signal: controller.signal
+                })
                 if (!response.ok) {
                     setLocationSuggestions(filteredPresets)
                     return
@@ -161,19 +168,26 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                 }
                 setLocationSuggestions(deduped)
             } catch (error) {
-                console.error('Failed to search city suggestions:', error)
-                setLocationSuggestions(filteredPresets)
+                if (error.name !== 'AbortError') {
+                    console.error('Failed to search city suggestions:', error)
+                    setLocationSuggestions(filteredPresets)
+                }
             } finally {
-                setSearchingLocations(false)
+                if (!controller.signal.aborted) {
+                    setSearchingLocations(false)
+                }
             }
         }, 250)
 
-        return () => clearTimeout(timer)
-    }, [config.weather_location, showLocationDropdown, API_BASE])
+        return () => {
+            controller.abort()
+            clearTimeout(timer)
+        }
+    }, [config.weather_location, showLocationDropdown])
 
-    const fetchConfig = async () => {
+    const fetchConfig = async (signal) => {
         try {
-            const response = await fetch(`${API_BASE}/config`)
+            const response = await fetch(`${API_BASE}/config`, { signal })
             if (response.ok) {
                 const data = await response.json()
                 setConfig(prev => ({
@@ -188,7 +202,9 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                 setHasRemoveBgKey(data.has_removebg_key)
             }
         } catch (error) {
-            console.error('Failed to fetch config:', error)
+            if (error.name !== 'AbortError') {
+                console.error('Failed to fetch config:', error)
+            }
         }
     }
 

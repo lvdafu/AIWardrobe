@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, RefreshCw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useRecommendation } from '../contexts/RecommendationContext'
 
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { toImageUrl } from '../utils/api'
 
 export default function Recommendation() {
     const { t } = useTranslation()
+    const navigate = useNavigate()
     const {
         loading,
         error,
@@ -35,17 +37,18 @@ export default function Recommendation() {
         }
 
         const chars = Array.from(recommendation)
+        const step = 4
         let index = 0
         setDisplayedRecommendation('')
 
         const timer = setInterval(() => {
             if (index < chars.length) {
-                index++
+                index = Math.min(index + step, chars.length)
                 setDisplayedRecommendation(chars.slice(0, index).join(''))
             } else {
                 clearInterval(timer)
             }
-        }, 30)
+        }, 45)
 
         return () => clearInterval(timer)
     }, [recommendation])
@@ -82,7 +85,7 @@ export default function Recommendation() {
                 </div>
                 <div className="aspect-square bg-zinc-100/50 dark:bg-zinc-800/50 p-4 border-b border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
                     <img
-                        src={`${API_BASE.replace('/api', '')}${item.image_url}`}
+                        src={toImageUrl(item.image_url)}
                         alt={item.item}
                         className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-500"
                     />
@@ -239,6 +242,21 @@ export default function Recommendation() {
                                 {renderClothingCard(suggestedBottom, t('recommendation.bottomWear'), selectionReasons?.bottom)}
                                 {renderClothingCard(suggestedShoes, t('recommendation.shoesWear'), selectionReasons?.shoes)}
                             </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <button className="btn-secondary" onClick={refreshRecommendation}>
+                                    <RefreshCw size={15} />
+                                    {t('recommendation.regenerate')}
+                                </button>
+                                <button className="btn-secondary" onClick={() => navigate('/outfit')}>
+                                    <Sparkles size={15} />
+                                    {t('recommendation.goOutfit')}
+                                </button>
+                                <button className="btn-secondary" onClick={() => navigate('/wardrobe')}>
+                                    <Sparkles size={15} />
+                                    {t('recommendation.goWardrobe')}
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -264,7 +282,7 @@ export default function Recommendation() {
                                         {accessory.item?.image_url && (
                                             <div className="mt-3 h-24 bg-zinc-100/60 dark:bg-zinc-800/50 rounded-xl p-2">
                                                 <img
-                                                    src={`${API_BASE.replace('/api', '')}${accessory.item.image_url}`}
+                                                    src={toImageUrl(accessory.item.image_url)}
                                                     alt={accessory.name}
                                                     className="w-full h-full object-contain"
                                                 />

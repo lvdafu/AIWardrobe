@@ -8,24 +8,51 @@ from domain.config import LLMConfig
 from services.weather import validate_location_input, DEFAULT_LOCATION_QUERY
 
 CONFIG_FILE = Path(__file__).parent / "llm_config.json"
+_CONFIG_CACHE: Optional[LLMConfig] = None
+_CONFIG_MTIME: Optional[float] = None
 
 
 def load_config() -> LLMConfig:
     """加载 LLM 配置"""
-    if CONFIG_FILE.exists():
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return LLMConfig(**data)
-        except Exception:
-            pass
-    return LLMConfig()
+    global _CONFIG_CACHE, _CONFIG_MTIME
+
+    if not CONFIG_FILE.exists():
+        _CONFIG_CACHE = LLMConfig()
+        _CONFIG_MTIME = None
+        return _CONFIG_CACHE
+
+    try:
+        mtime = CONFIG_FILE.stat().st_mtime
+    except Exception:
+        mtime = None
+
+    if _CONFIG_CACHE is not None and _CONFIG_MTIME == mtime:
+        return _CONFIG_CACHE
+
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        _CONFIG_CACHE = LLMConfig(**data)
+        _CONFIG_MTIME = mtime
+        return _CONFIG_CACHE
+    except Exception:
+        _CONFIG_CACHE = LLMConfig()
+        _CONFIG_MTIME = mtime
+        return _CONFIG_CACHE
 
 
 def save_config(config: LLMConfig) -> None:
     """保存 LLM 配置"""
+    global _CONFIG_CACHE, _CONFIG_MTIME
+
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config.model_dump(), f, indent=2, ensure_ascii=False)
+
+    _CONFIG_CACHE = config
+    try:
+        _CONFIG_MTIME = CONFIG_FILE.stat().st_mtime
+    except Exception:
+        _CONFIG_MTIME = None
 
 
 def update_config(

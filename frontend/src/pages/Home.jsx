@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Settings as SettingsIcon, RefreshCw, Sparkles, CloudSun, Droplets, Wind, Thermometer, ChevronLeft, ChevronRight, Shirt, ArrowRight } from 'lucide-react'
 import Settings from '../components/Settings'
-
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { API_BASE, toImageUrl } from '../utils/api'
 const FALLBACK_LOCATION = '上海, 上海市, 中国'
 
 const formatDate = (locale) => {
@@ -266,7 +265,7 @@ export default function Home() {
                                                 <div className="flex gap-4 items-center">
                                                     <div className="w-24 h-24 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-2 flex items-center justify-center">
                                                         <img
-                                                            src={`${API_BASE.replace('/api', '')}${item.image_url}`}
+                                                            src={toImageUrl(item.image_url)}
                                                             alt={item.item}
                                                             className="w-full h-full object-contain"
                                                         />

@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
-
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { API_BASE } from '../utils/api'
 
 const UploadContext = createContext(null)
 

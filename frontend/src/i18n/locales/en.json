@@ -29,7 +29,15 @@
     "season": "Season",
     "seasonPlaceholder": "e.g. Summer, Autumn (comma separated)",
     "description": "Description",
-    "descriptionPlaceholder": "More details about this clothing..."
+    "descriptionPlaceholder": "More details about this clothing...",
+    "heroTag": "Quick Start",
+    "heroTitle": "Build today's look in 3 steps",
+    "heroSubtitle": "Upload your clothes and get AI-powered styling suggestions.",
+    "goWardrobe": "Open Wardrobe",
+    "goRecommendation": "View Suggestion",
+    "stepUpload": "Upload",
+    "stepEdit": "Edit",
+    "stepRecommend": "Recommend"
   },
   "upload": {
     "title": "Add New Clothing",
@@ -131,7 +139,9 @@
     "fromWardrobe": "In wardrobe",
     "needBuy": "Need to buy",
     "purchaseFallback": "Shopping fallback",
-    "buyKeywords": "Suggested items"
+    "buyKeywords": "Suggested items",
+    "goOutfit": "Go to Outfit",
+    "goWardrobe": "Go to Wardrobe"
   },
   "home": {
     "today": "Today",

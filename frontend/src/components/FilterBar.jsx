@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 export default function FilterBar({ onSearch, onFilterChange }) {
     const { t } = useTranslation()
+    const [searchText, setSearchText] = useState('')
     const [selectedSeasons, setSelectedSeasons] = useState([])
     const [selectedStyles, setSelectedStyles] = useState([])
 
@@ -24,6 +25,14 @@ export default function FilterBar({ onSearch, onFilterChange }) {
         { key: 'daily', label: t('filter.daily') },
         { key: 'commute', label: t('filter.commute') }
     ]
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onSearch(searchText)
+        }, 200)
+
+        return () => clearTimeout(timer)
+    }, [searchText, onSearch])
 
     const toggleSeason = (season) => {
         const newSeasons = selectedSeasons.includes(season)
@@ -51,7 +60,8 @@ export default function FilterBar({ onSearch, onFilterChange }) {
                     type="text"
                     placeholder={t('wardrobe.searchPlaceholder')}
                     className="w-full pl-10 pr-4 py-2.5 bg-zinc-100/80 dark:bg-zinc-800/80 border-transparent rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:bg-white dark:focus:bg-zinc-800 transition-all text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400"
-                    onChange={(e) => onSearch(e.target.value)}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
                 />
             </div>
 

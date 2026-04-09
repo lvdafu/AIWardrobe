@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { API_BASE, toImageUrl } from '../utils/api'
 
 export default function ClothesDetail() {
     const { t } = useTranslation()
@@ -95,7 +95,7 @@ export default function ClothesDetail() {
                 <article className="card overflow-hidden">
                     <div className="aspect-square bg-zinc-100 dark:bg-zinc-800 p-6 flex items-center justify-center">
                         <img
-                            src={`${API_BASE.replace('/api', '')}${item.image_url}`}
+                            src={toImageUrl(item.image_url)}
                             alt={item.item}
                             className="w-full h-full object-contain drop-shadow-md"
                         />

@@ -29,7 +29,15 @@
     "season": "季节",
     "seasonPlaceholder": "如: 夏季, 秋季 (逗号分隔)",
     "description": "详细描述",
-    "descriptionPlaceholder": "关于这件衣服的更多细节..."
+    "descriptionPlaceholder": "关于这件衣服的更多细节...",
+    "heroTag": "快速开始",
+    "heroTitle": "3 步完成今日穿搭",
+    "heroSubtitle": "上传衣物后，AI 会自动识别并给出搭配建议。",
+    "goWardrobe": "查看衣柜",
+    "goRecommendation": "去看推荐",
+    "stepUpload": "上传",
+    "stepEdit": "编辑",
+    "stepRecommend": "推荐"
   },
   "upload": {
     "title": "添加新衣物",
@@ -131,7 +139,9 @@
     "fromWardrobe": "衣柜已有",
     "needBuy": "建议补购",
     "purchaseFallback": "购买补充建议",
-    "buyKeywords": "推荐单品"
+    "buyKeywords": "推荐单品",
+    "goOutfit": "去穿搭页",
+    "goWardrobe": "去衣柜"
   },
   "home": {
     "today": "今天",

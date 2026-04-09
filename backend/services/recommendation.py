@@ -227,10 +227,13 @@ def build_purchase_suggestion(
     }
 
 
-def extract_wardrobe_accessories(all_clothes: list[dict]) -> list[dict]:
+def extract_wardrobe_accessories(
+    all_clothes: list[dict],
+    categories: list[str],
+) -> list[dict]:
     accessories = []
-    for item in all_clothes:
-        if normalize_category_value(str(item.get("category", ""))) == "accessory":
+    for item, category in zip(all_clothes, categories):
+        if category == "accessory":
             accessories.append(item)
             continue
         text = f"{item.get('item', '')} {item.get('description', '')}".lower()
@@ -303,8 +306,10 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
 
     by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
     all_by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
+    normalized_categories: list[str] = []
     for item in all_clothes:
         category = normalize_category_value(str(item.get("category", "")))
+        normalized_categories.append(category)
         if category not in by_category:
             continue
         all_by_category[category].append(item)
@@ -349,7 +354,7 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
                 build_purchase_suggestion(category, temperature_profile, horoscope)
             )
 
-    accessory_candidates = extract_wardrobe_accessories(all_clothes)
+    accessory_candidates = extract_wardrobe_accessories(all_clothes, normalized_categories)
     compatible_accessories = []
     for item in accessory_candidates:
         # 饰品优先按季节匹配；无季节标签时保留可选。
