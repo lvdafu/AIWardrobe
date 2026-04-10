@@ -2,6 +2,7 @@
 
 # 👕 AI スマートワードローブ
 
+[![GitHub Stars](https://img.shields.io/github/stars/leoz9/AIWardrobe?style=social)](https://github.com/leoz9/AIWardrobe/stargazers)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://ghcr.io/leoz9/aiwardrobe)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org)
@@ -32,15 +33,21 @@
 | **AI レコメンデーション** | Gemini や OpenAI 互換プロバイダーによるパーソナライズされたコーディネート生成 |
 | **レスポンシブ UI** | Tailwind CSS によるモダンなインターフェースで、デスクトップ・タブレット・モバイルに対応 |
 
-## 📸 スクリーンショット
+## 📸 スクリーンショット（新 UI）
+
+<div align="center">
+  <img src="docs/images/screenshot_landing.jpg" width="820" alt="ホーム/ランディング（新 UI）" />
+</div>
 
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="docs/images/screenshot_input.jpg" width="200" /><br /><b>アイテム登録</b></td>
-<td align="center"><img src="docs/images/screenshot_wardrobe.jpg" width="200" /><br /><b>ワードローブ</b></td>
-<td align="center"><img src="docs/images/screenshot_recommendation.jpg" width="200" /><br /><b>AI レコメンド</b></td>
-<td align="center"><img src="docs/images/screenshot_detail.jpg" width="200" /><br /><b>コーデ詳細</b></td>
+<td align="center"><img src="docs/images/screenshot_input.jpg" width="280" /><br /><b>アイテム登録</b></td>
+<td align="center"><img src="docs/images/screenshot_wardrobe.jpg" width="280" /><br /><b>ワードローブ</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/images/screenshot_recommendation.jpg" width="280" /><br /><b>AI レコメンド</b></td>
+<td align="center"><img src="docs/images/screenshot_detail.jpg" width="280" /><br /><b>衣類詳細</b></td>
 </tr>
 </table>
 </div>
@@ -152,11 +159,11 @@ http://localhost:8000 でアクセス &nbsp;|&nbsp; API ドキュメント http:
 
 ## ⭐ Star History
 
-<a href="https://www.star-history.com/#leoz9/AIWardrobe&type=date">
+<a href="https://www.star-history.com/#leoz9/AIWardrobe&type=Date">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date&theme=dark" />
     <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" width="860" />
   </picture>
 </a>
 

@@ -29,7 +29,15 @@
     "season": "シーズン",
     "seasonPlaceholder": "例: 夏, 秋（カンマ区切り）",
     "description": "詳細説明",
-    "descriptionPlaceholder": "この服の詳細..."
+    "descriptionPlaceholder": "この服の詳細...",
+    "heroTag": "クイックスタート",
+    "heroTitle": "3ステップで今日のコーデ",
+    "heroSubtitle": "衣類をアップロードすると、AIが自動分析して提案します。",
+    "goWardrobe": "衣装棚を見る",
+    "goRecommendation": "提案を見る",
+    "stepUpload": "アップロード",
+    "stepEdit": "編集",
+    "stepRecommend": "提案"
   },
   "upload": {
     "title": "新しい衣類を追加",
@@ -43,7 +51,8 @@
     "removingBg": "背景を除去中...",
     "analyzing": "衣類を分析中...",
     "done": "完了！",
-    "uploadFailed": "アップロード失敗"
+    "uploadFailed": "アップロード失敗",
+    "batchResult": "一括インポート完了：成功 {{success}} 件、失敗 {{failed}} 件"
   },
   "wardrobe": {
     "tops": "トップス",
@@ -55,6 +64,19 @@
     "deleteConfirm": "この衣類を削除しますか？",
     "delete": "削除",
     "searchPlaceholder": "名前、説明で検索..."
+  },
+  "clothesDetail": {
+    "title": "衣類の詳細",
+    "loading": "詳細を読み込み中...",
+    "notFound": "この衣類は存在しないか、削除されています。",
+    "loadFailed": "詳細の読み込みに失敗しました。再試行してください。",
+    "retry": "再試行",
+    "description": "詳細説明",
+    "color": "カラー",
+    "style": "スタイル",
+    "season": "シーズン",
+    "usage": "利用シーン",
+    "empty": "なし"
   },
   "filter": {
     "season": "シーズン",
@@ -117,7 +139,20 @@
     "fromWardrobe": "手持ちあり",
     "needBuy": "購入推奨",
     "purchaseFallback": "不足分の購入提案",
-    "buyKeywords": "おすすめアイテム"
+    "buyKeywords": "おすすめアイテム",
+    "goOutfit": "コーデへ",
+    "goWardrobe": "衣装棚へ",
+    "goalLabel": "今回の目的",
+    "goalPlaceholder": "例：通勤 / デート / スポーツ / 面接",
+    "goalHint": "目的は入力またはマイクで音声入力できます。",
+    "goalUsed": "今回の目的",
+    "voiceStart": "音声入力を開始",
+    "voiceStop": "音声入力を停止",
+    "voiceListening": "聞き取り中...",
+    "voiceUnsupported": "このブラウザでは音声入力に対応していません。手動で入力してください。",
+    "voicePermissionDenied": "マイク権限がありません。権限を有効にして再試行してください。",
+    "voiceNoSpeech": "音声を検出できませんでした。もう一度お試しください。",
+    "voiceError": "音声認識に失敗しました。手動入力をご利用ください。"
   },
   "home": {
     "today": "今日",

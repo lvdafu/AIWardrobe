@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import FilterBar from '../components/FilterBar'
 import { Trash2 } from 'lucide-react'
 
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { API_BASE, toImageUrl } from '../utils/api'
 
 export default function Wardrobe() {
     const { t } = useTranslation()
+    const navigate = useNavigate()
     const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [] })
     const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState({
@@ -16,12 +18,14 @@ export default function Wardrobe() {
     })
 
     useEffect(() => {
-        fetchWardrobe()
+        const controller = new AbortController()
+        void fetchWardrobe(controller.signal)
+        return () => controller.abort()
     }, [])
 
-    const fetchWardrobe = async () => {
+    const fetchWardrobe = useCallback(async (signal) => {
         try {
-            const response = await fetch(`${API_BASE}/wardrobe`)
+            const response = await fetch(`${API_BASE}/wardrobe`, { signal })
             if (response.ok) {
                 const data = await response.json()
                 setWardrobe({
@@ -32,57 +36,77 @@ export default function Wardrobe() {
                 })
             }
         } catch (error) {
-            console.error('Failed to fetch wardrobe:', error)
+            if (error.name !== 'AbortError') {
+                console.error('Failed to fetch wardrobe:', error)
+            }
         } finally {
-            setLoading(false)
+            if (!signal?.aborted) {
+                setLoading(false)
+            }
         }
-    }
+    }, [])
 
     const handleDelete = async (id) => {
         if (!confirm(t('wardrobe.deleteConfirm'))) return
+
+        const previousWardrobe = wardrobe
+        setWardrobe(prev => ({
+            tops: prev.tops.filter(item => item.id !== id),
+            bottoms: prev.bottoms.filter(item => item.id !== id),
+            shoes: prev.shoes.filter(item => item.id !== id),
+            accessories: prev.accessories.filter(item => item.id !== id)
+        }))
 
         try {
             const response = await fetch(`${API_BASE}/clothes/${id}`, {
                 method: 'DELETE'
             })
-            if (response.ok) {
-                fetchWardrobe()
+            if (!response.ok) {
+                setWardrobe(previousWardrobe)
             }
         } catch (error) {
+            setWardrobe(previousWardrobe)
             console.error('Delete error:', error)
         }
     }
 
-    const handleSearch = (text) => setFilters(prev => ({ ...prev, search: text }))
-    const handleFilterChange = ({ seasons, styles }) => setFilters(prev => ({ ...prev, seasons, styles }))
+    const handleSearch = useCallback((text) => {
+        setFilters(prev => ({ ...prev, search: text }))
+    }, [])
 
-    const filterItems = (items) => {
-        return items.filter(item => {
-            if (filters.search) {
-                const searchLower = filters.search.toLowerCase()
-                const matchesText =
-                    item.item.toLowerCase().includes(searchLower) ||
-                    (item.description && item.description.toLowerCase().includes(searchLower))
-                if (!matchesText) return false
-            }
-            if (filters.seasons.length > 0) {
-                const hasSeason = item.season_semantics?.some(s => filters.seasons.includes(s))
-                if (!hasSeason) return false
-            }
-            if (filters.styles.length > 0) {
-                const hasStyle = item.style_semantics?.some(s => filters.styles.includes(s))
-                if (!hasStyle) return false
-            }
-            return true
-        })
-    }
+    const handleFilterChange = useCallback(({ seasons, styles }) => {
+        setFilters(prev => ({ ...prev, seasons, styles }))
+    }, [])
 
-    const sections = [
-        { title: t('wardrobe.tops'), items: filterItems(wardrobe.tops) },
-        { title: t('wardrobe.bottoms'), items: filterItems(wardrobe.bottoms) },
-        { title: t('wardrobe.shoes'), items: filterItems(wardrobe.shoes) },
-        { title: t('wardrobe.accessories'), items: filterItems(wardrobe.accessories) }
-    ]
+    const sections = useMemo(() => {
+        const filterItems = (items) => {
+            return items.filter(item => {
+                if (filters.search) {
+                    const searchLower = filters.search.toLowerCase()
+                    const matchesText =
+                        item.item.toLowerCase().includes(searchLower) ||
+                        (item.description && item.description.toLowerCase().includes(searchLower))
+                    if (!matchesText) return false
+                }
+                if (filters.seasons.length > 0) {
+                    const hasSeason = item.season_semantics?.some(s => filters.seasons.includes(s))
+                    if (!hasSeason) return false
+                }
+                if (filters.styles.length > 0) {
+                    const hasStyle = item.style_semantics?.some(s => filters.styles.includes(s))
+                    if (!hasStyle) return false
+                }
+                return true
+            })
+        }
+
+        return [
+            { title: t('wardrobe.tops'), items: filterItems(wardrobe.tops) },
+            { title: t('wardrobe.bottoms'), items: filterItems(wardrobe.bottoms) },
+            { title: t('wardrobe.shoes'), items: filterItems(wardrobe.shoes) },
+            { title: t('wardrobe.accessories'), items: filterItems(wardrobe.accessories) }
+        ]
+    }, [filters.search, filters.seasons, filters.styles, t, wardrobe])
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -115,10 +139,22 @@ export default function Wardrobe() {
                         ) : (
                             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
                                 {section.items.map(item => (
-                                    <div key={item.id} className="card group overflow-hidden hover:-translate-y-1 transition-transform duration-300">
+                                    <div
+                                        key={item.id}
+                                        className="card group overflow-hidden hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
+                                        onClick={() => navigate(`/clothes/${item.id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault()
+                                                navigate(`/clothes/${item.id}`)
+                                            }
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                    >
                                         <div className="relative aspect-square bg-zinc-100 dark:bg-zinc-800 p-4 flex items-center justify-center overflow-hidden">
                                             <img
-                                                src={`${API_BASE.replace('/api', '')}${item.image_url}`}
+                                                src={toImageUrl(item.image_url)}
                                                 alt={item.item}
                                                 loading="lazy"
                                                 className="w-full h-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-500"
@@ -128,7 +164,10 @@ export default function Wardrobe() {
                                             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate pr-2">{item.item}</span>
                                             <button
                                                 className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-md transition-colors"
-                                                onClick={() => handleDelete(item.id)}
+                                                onClick={(event) => {
+                                                    event.stopPropagation()
+                                                    handleDelete(item.id)
+                                                }}
                                                 title={t('wardrobe.delete')}
                                             >
                                                 <Trash2 size={16} />

@@ -1,20 +1,55 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Upload as UploadIcon, Camera, Image as ImageIcon, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-
-const API_BASE = `http://${window.location.hostname}:8000/api`
+import { useUpload } from '../contexts/UploadContext'
 
 export default function Upload({ onUploadSuccess }) {
     const { t } = useTranslation()
+    const {
+        isUploading,
+        progress,
+        statusKey,
+        current,
+        total,
+        completedSingleItem,
+        batchResult,
+        lastError,
+        uploadFiles,
+        consumeCompletedSingleItem,
+        consumeBatchResult,
+        consumeLastError
+    } = useUpload()
     const [isDragging, setIsDragging] = useState(false)
-    const [isUploading, setIsUploading] = useState(false)
-    const [progress, setProgress] = useState(0)
-    const [status, setStatus] = useState('')
     const [showCamera, setShowCamera] = useState(false)
     const fileInputRef = useRef(null)
     const cameraInputRef = useRef(null)
     const videoRef = useRef(null)
     const streamRef = useRef(null)
+
+    const status = statusKey
+        ? (total > 1 && current > 0 ? `${t(statusKey)} (${current}/${total})` : t(statusKey))
+        : ''
+
+    useEffect(() => {
+        if (!completedSingleItem) return
+        onUploadSuccess?.(completedSingleItem)
+        consumeCompletedSingleItem()
+    }, [completedSingleItem, onUploadSuccess, consumeCompletedSingleItem])
+
+    useEffect(() => {
+        if (!batchResult) return
+        alert(t('upload.batchResult', batchResult))
+        consumeBatchResult()
+    }, [batchResult, t, consumeBatchResult])
+
+    useEffect(() => {
+        if (!lastError) return
+        const translatedError = lastError === 'INVALID_IMAGE_TYPE'
+            ? t('upload.selectImage')
+            : lastError
+        alert(`${t('upload.uploadFailed')}: ${translatedError}`)
+        consumeLastError()
+    }, [lastError, t, consumeLastError])
 
     const handleDragOver = (e) => {
         e.preventDefault()
@@ -31,7 +66,7 @@ export default function Upload({ onUploadSuccess }) {
         setIsDragging(false)
         const files = e.dataTransfer.files
         if (files.length > 0) {
-            uploadFile(files[0])
+            void uploadFiles(Array.from(files))
         }
     }
 
@@ -83,7 +118,7 @@ export default function Upload({ onUploadSuccess }) {
         canvas.toBlob((blob) => {
             if (blob) {
                 const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' })
-                uploadFile(file)
+                void uploadFiles([file])
                 stopCamera()
             }
         }, 'image/jpeg', 0.9)
@@ -92,60 +127,9 @@ export default function Upload({ onUploadSuccess }) {
     const handleFileChange = (e) => {
         const files = e.target.files
         if (files && files.length > 0) {
-            uploadFile(files[0])
+            void uploadFiles(Array.from(files))
         }
         e.target.value = ''
-    }
-
-    const uploadFile = async (file) => {
-        if (!file.type.startsWith('image/')) {
-            alert(t('upload.selectImage'))
-            return
-        }
-
-        setIsUploading(true)
-        setProgress(10)
-        setStatus(t('upload.uploading'))
-
-        const formData = new FormData()
-        formData.append('file', file)
-
-        try {
-            setProgress(30)
-            setStatus(t('upload.removingBg'))
-
-            const response = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                body: formData
-            })
-
-            setProgress(70)
-            setStatus(t('upload.analyzing'))
-
-            if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.detail || t('upload.uploadFailed'))
-            }
-
-            const data = await response.json()
-
-            setProgress(100)
-            setStatus(t('upload.done'))
-
-            setTimeout(() => {
-                setIsUploading(false)
-                setProgress(0)
-                setStatus('')
-                onUploadSuccess?.(data)
-            }, 500)
-
-        } catch (error) {
-            console.error('Upload error:', error)
-            alert(`${t('upload.uploadFailed')}: ${error.message}`)
-            setIsUploading(false)
-            setProgress(0)
-            setStatus('')
-        }
     }
 
     if (showCamera) {
@@ -203,6 +187,7 @@ export default function Upload({ onUploadSuccess }) {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={handleFileChange}
                 />

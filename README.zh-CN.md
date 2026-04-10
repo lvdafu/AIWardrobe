@@ -2,6 +2,7 @@
 
 # 👕 AI 智能衣柜
 
+[![GitHub Stars](https://img.shields.io/github/stars/leoz9/AIWardrobe?style=social)](https://github.com/leoz9/AIWardrobe/stargazers)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://ghcr.io/leoz9/aiwardrobe)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org)
@@ -32,15 +33,21 @@
 | **AI 推荐** | 支持 Gemini 和 OpenAI 风格接口，用于生成个性化穿搭方案 |
 | **响应式界面** | 基于 Tailwind CSS，适配桌面、平板和手机 |
 
-## 📸 界面截图
+## 📸 界面截图（新版 UI）
+
+<div align="center">
+  <img src="docs/images/screenshot_landing.jpg" width="820" alt="首页/落地页（新版 UI）" />
+</div>
 
 <div align="center">
 <table>
 <tr>
-<td align="center"><img src="docs/images/screenshot_input.jpg" width="200" /><br /><b>录入新衣</b></td>
-<td align="center"><img src="docs/images/screenshot_wardrobe.jpg" width="200" /><br /><b>我的衣橱</b></td>
-<td align="center"><img src="docs/images/screenshot_recommendation.jpg" width="200" /><br /><b>AI 推荐</b></td>
-<td align="center"><img src="docs/images/screenshot_detail.jpg" width="200" /><br /><b>穿搭详情</b></td>
+<td align="center"><img src="docs/images/screenshot_input.jpg" width="280" /><br /><b>录入新衣</b></td>
+<td align="center"><img src="docs/images/screenshot_wardrobe.jpg" width="280" /><br /><b>我的衣橱</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/images/screenshot_recommendation.jpg" width="280" /><br /><b>AI 推荐</b></td>
+<td align="center"><img src="docs/images/screenshot_detail.jpg" width="280" /><br /><b>衣物详情</b></td>
 </tr>
 </table>
 </div>
@@ -152,11 +159,11 @@ docker compose up --build -d
 
 ## ⭐ Star History
 
-<a href="https://www.star-history.com/#leoz9/AIWardrobe&type=date">
+<a href="https://www.star-history.com/#leoz9/AIWardrobe&type=Date">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date&theme=dark" />
     <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=leoz9/AIWardrobe&type=Date" width="860" />
   </picture>
 </a>
 
