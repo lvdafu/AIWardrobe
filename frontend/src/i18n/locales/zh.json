@@ -141,7 +141,18 @@
     "purchaseFallback": "购买补充建议",
     "buyKeywords": "推荐单品",
     "goOutfit": "去穿搭页",
-    "goWardrobe": "去衣柜"
+    "goWardrobe": "去衣柜",
+    "goalLabel": "本次目标",
+    "goalPlaceholder": "例如：上班通勤 / 约会 / 运动 / 面试",
+    "goalHint": "可输入或点击麦克风语音输入目标场景。",
+    "goalUsed": "本次目标",
+    "voiceStart": "开始语音输入",
+    "voiceStop": "停止语音输入",
+    "voiceListening": "正在听你说话...",
+    "voiceUnsupported": "当前浏览器不支持语音输入，请手动输入目标。",
+    "voicePermissionDenied": "未获得麦克风权限，请开启后重试。",
+    "voiceNoSpeech": "没有识别到语音，请再试一次。",
+    "voiceError": "语音识别失败，请改用手动输入。"
   },
   "home": {
     "today": "今天",

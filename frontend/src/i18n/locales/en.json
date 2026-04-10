@@ -141,7 +141,18 @@
     "purchaseFallback": "Shopping fallback",
     "buyKeywords": "Suggested items",
     "goOutfit": "Go to Outfit",
-    "goWardrobe": "Go to Wardrobe"
+    "goWardrobe": "Go to Wardrobe",
+    "goalLabel": "Goal",
+    "goalPlaceholder": "e.g. commute / date / sport / interview",
+    "goalHint": "Type your occasion or use the microphone.",
+    "goalUsed": "Goal used",
+    "voiceStart": "Start voice input",
+    "voiceStop": "Stop voice input",
+    "voiceListening": "Listening...",
+    "voiceUnsupported": "Voice input is not supported in this browser. Please type your goal.",
+    "voicePermissionDenied": "Microphone permission is denied. Please enable it and try again.",
+    "voiceNoSpeech": "No speech detected. Please try again.",
+    "voiceError": "Voice recognition failed. Please type your goal."
   },
   "home": {
     "today": "Today",

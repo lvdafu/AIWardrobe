@@ -33,13 +33,14 @@ ZODIAC_STYLE_HINTS = {
     "pisces": {"柔和", "文艺", "轻盈", "vintage", "casual"},
 }
 
-ACCESSORY_KEYWORDS = (
-    "帽", "帽子", "围巾", "项链", "耳环", "耳钉", "手链", "戒指",
-    "手表", "墨镜", "眼镜", "领带", "腰带", "cap", "hat", "scarf",
-    "necklace", "earring", "bracelet", "ring", "watch", "sunglasses",
-    "tie", "belt"
-)
-
+GOAL_ALIASES = {
+    "commute": {"commute", "work", "office", "通勤", "上班", "工作", "出勤"},
+    "date": {"date", "dating", "约会", "聚会", "见面"},
+    "sport": {"sport", "gym", "workout", "run", "运动", "健身", "跑步", "训练"},
+    "formal": {"formal", "business", "meeting", "interview", "商务", "正式", "面试", "会议"},
+    "daily": {"daily", "casual", "weekend", "日常", "休闲", "周末", "出街"},
+    "travel": {"travel", "trip", "旅行", "出游", "旅游"},
+}
 
 def normalize_seasons(raw_values: list[str]) -> set[str]:
     normalized: set[str] = set()
@@ -125,15 +126,35 @@ def is_temperature_compatible(item: dict, allowed_seasons: set[str]) -> bool:
     return bool(item_seasons & allowed_seasons)
 
 
-def build_color_tokens(raw_color: str) -> list[str]:
-    base = (raw_color or "").strip().lower()
-    if not base:
-        return []
-    compact = base.replace("色", "").replace("系", "").replace(" ", "")
-    tokens = {base, compact}
-    if len(compact) >= 2:
-        tokens.add(compact[:2])
-    return [token for token in tokens if token]
+def normalize_goal(goal: str | None) -> tuple[str, str]:
+    raw_goal = (goal or "").strip()
+    if not raw_goal:
+        return "", ""
+
+    lowered = raw_goal.lower()
+    for canonical, aliases in GOAL_ALIASES.items():
+        if lowered in aliases:
+            return raw_goal, canonical
+
+    for canonical, aliases in GOAL_ALIASES.items():
+        if any(alias in lowered for alias in aliases):
+            return raw_goal, canonical
+
+    return raw_goal, lowered
+
+
+def usage_tokens(values: list[str]) -> set[str]:
+    normalized: set[str] = set()
+    for value in values or []:
+        token = (value or "").strip().lower()
+        if not token:
+            continue
+        normalized.add(token)
+        for canonical, aliases in GOAL_ALIASES.items():
+            if token in aliases:
+                normalized.add(canonical)
+                break
+    return normalized
 
 
 def score_item(
@@ -142,6 +163,7 @@ def score_item(
     horoscope: dict,
     weather: WeatherInfo,
     temperature_profile: dict[str, Any],
+    normalized_goal: str,
 ) -> tuple[int, list[str]]:
     score = 5
     if is_temperature_compatible(item, temperature_profile["allowed_seasons"]):
@@ -178,6 +200,12 @@ def score_item(
             score += 2
             reasons.append("天气有降水，鞋履更注重防滑/防水")
 
+    if normalized_goal:
+        item_usage = usage_tokens(item.get("usage_semantics", []))
+        if normalized_goal in item_usage:
+            score += 4
+            reasons.append(f"使用场景匹配本次目标「{normalized_goal}」")
+
     return score, reasons
 
 
@@ -187,6 +215,7 @@ def pick_best_item(
     horoscope: dict,
     weather: WeatherInfo,
     temperature_profile: dict[str, Any],
+    normalized_goal: str,
 ) -> tuple[dict | None, str]:
     if not candidates:
         return None, ""
@@ -196,7 +225,14 @@ def pick_best_item(
     best_reasons: list[str] = []
 
     for item in candidates:
-        score, reasons = score_item(item, category, horoscope, weather, temperature_profile)
+        score, reasons = score_item(
+            item,
+            category,
+            horoscope,
+            weather,
+            temperature_profile,
+            normalized_goal,
+        )
         if score > best_score:
             best_score = score
             best_item = item
@@ -276,7 +312,11 @@ def build_recommendation_summary(
     return summary
 
 
-async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = None) -> dict:
+async def get_ai_recommendation(
+    weather: WeatherInfo,
+    zodiac_sign: str | None = None,
+    goal: str | None = None,
+) -> dict:
     """
     根据天气和星座运势获取AI穿搭推荐。
     温度约束为硬条件：衣柜单品必须满足温度策略，不满足时给出购买兜底。
@@ -302,6 +342,7 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
         zodiac_sign=zodiac_sign,
         include_inference=True,
     )
+    goal_raw, goal_normalized = normalize_goal(goal)
     temperature_profile = build_temperature_profile(weather)
 
     by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
@@ -327,6 +368,7 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
             horoscope=horoscope,
             weather=weather,
             temperature_profile=temperature_profile,
+            normalized_goal=goal_normalized,
         )
         used_fallback = False
         if chosen is None and category == "shoes" and all_by_category["shoes"]:
@@ -336,6 +378,7 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
                 horoscope=horoscope,
                 weather=weather,
                 temperature_profile=temperature_profile,
+                normalized_goal=goal_normalized,
             )
             if fallback_item is not None:
                 chosen = fallback_item
@@ -371,6 +414,7 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
                 horoscope=horoscope,
                 weather=weather,
                 temperature_profile=temperature_profile,
+                normalized_goal=goal_normalized,
             )
             scored.append((score, item, "；".join(reasons)))
         scored.sort(key=lambda value: value[0], reverse=True)
@@ -395,6 +439,8 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
         selection_reasons=selection_reasons,
         purchase_suggestions=purchase_suggestions,
         suggested_accessories=suggested_accessories,
+        goal_raw=goal_raw,
+        goal_normalized=goal_normalized,
     )
 
     return {
@@ -423,6 +469,8 @@ async def get_ai_recommendation(weather: WeatherInfo, zodiac_sign: str | None = 
         "suggested_shoes": selected.get("shoes"),
         "suggested_accessories": suggested_accessories,
         "purchase_suggestions": purchase_suggestions,
+        "goal_raw": goal_raw,
+        "goal_normalized": goal_normalized,
     }
 
 
@@ -434,6 +482,8 @@ async def get_llm_recommendation(
     selection_reasons: dict[str, str],
     purchase_suggestions: list[dict],
     suggested_accessories: list[dict],
+    goal_raw: str,
+    goal_normalized: str,
 ) -> str:
     """
     使用 LLM 生成推荐文案，失败时回退到规则文本。
@@ -448,6 +498,8 @@ async def get_llm_recommendation(
             selection_reasons=selection_reasons,
             purchase_suggestions=purchase_suggestions,
             suggested_accessories=suggested_accessories,
+            goal_raw=goal_raw,
+            goal_normalized=goal_normalized,
         )
 
     def item_name(category: str) -> str:
@@ -494,6 +546,10 @@ async def get_llm_recommendation(
 饰品建议：
 {accessory_lines}
 
+用户目标：
+- 原始目标：{goal_raw or '未指定'}
+- 归一化场景：{goal_normalized or '未指定'}
+
 输出要求：
 1. 先给出今日穿搭结论（2-3句）
 2. 明确指出哪些是衣柜现有、哪些需要补购
@@ -538,6 +594,8 @@ async def get_llm_recommendation(
                 selection_reasons=selection_reasons,
                 purchase_suggestions=purchase_suggestions,
                 suggested_accessories=suggested_accessories,
+                goal_raw=goal_raw,
+                goal_normalized=goal_normalized,
             )
 
         data = response.json()
@@ -552,6 +610,8 @@ async def get_llm_recommendation(
             selection_reasons=selection_reasons,
             purchase_suggestions=purchase_suggestions,
             suggested_accessories=suggested_accessories,
+            goal_raw=goal_raw,
+            goal_normalized=goal_normalized,
         )
 
 
@@ -563,6 +623,8 @@ def generate_basic_recommendation(
     selection_reasons: dict[str, str],
     purchase_suggestions: list[dict],
     suggested_accessories: list[dict],
+    goal_raw: str,
+    goal_normalized: str,
 ) -> str:
     """
     生成规则版推荐文本（不依赖 LLM）。
@@ -570,9 +632,15 @@ def generate_basic_recommendation(
     lines = [
         f"### 今日穿搭结论",
         f"体感温度约 **{weather.feelsLike}°C**，按 **{temperature_profile['label']}** 策略搭配：{temperature_profile['advice']}",
+    ]
+
+    if goal_raw or goal_normalized:
+        lines.append(f"本次目标：**{goal_raw or goal_normalized}**")
+
+    lines.extend([
         "",
         "### 衣柜命中单品",
-    ]
+    ])
 
     category_names = {"top": "上装", "bottom": "下装", "shoes": "鞋履"}
     for category in ("top", "bottom", "shoes"):

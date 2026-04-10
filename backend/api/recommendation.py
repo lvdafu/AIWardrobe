@@ -24,6 +24,8 @@ class RecommendationResponse(BaseModel):
     suggested_shoes: Optional[dict] = None
     suggested_accessories: list[dict] = Field(default_factory=list)
     purchase_suggestions: list[dict] = Field(default_factory=list)
+    goal_raw: Optional[str] = None
+    goal_normalized: Optional[str] = None
 
 
 @router.get("/recommendation", response_model=RecommendationResponse)
@@ -39,6 +41,7 @@ async def get_outfit_recommendation(
         default=None,
         description="可选，临时指定星座（会覆盖设置中的星座）"
     ),
+    goal: Optional[str] = Query(default=None, description="可选，用户本次穿搭目标/场景"),
 ):
     """
     获取AI穿搭推荐
@@ -64,6 +67,6 @@ async def get_outfit_recommendation(
         raise HTTPException(status_code=500, detail="获取天气信息失败")
     
     # 获取AI推荐
-    recommendation = await get_ai_recommendation(weather, zodiac_sign=zodiac_sign)
+    recommendation = await get_ai_recommendation(weather, zodiac_sign=zodiac_sign, goal=goal)
     
     return recommendation

@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, RefreshCw } from 'lucide-react'
+import { Sparkles, RefreshCw, Mic, MicOff } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useRecommendation } from '../contexts/RecommendationContext'
 
 import { toImageUrl } from '../utils/api'
 
 export default function Recommendation() {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const navigate = useNavigate()
     const {
         loading,
@@ -24,11 +24,18 @@ export default function Recommendation() {
         suggestedShoes,
         suggestedAccessories,
         purchaseSuggestions,
+        goalRaw,
+        goalNormalized,
         selectedCity,
         fetchRecommendation
     } = useRecommendation()
 
     const [displayedRecommendation, setDisplayedRecommendation] = useState('')
+    const [goalInput, setGoalInput] = useState('')
+    const [isListening, setIsListening] = useState(false)
+    const [speechSupported, setSpeechSupported] = useState(false)
+    const [speechError, setSpeechError] = useState('')
+    const recognitionRef = useRef(null)
 
     useEffect(() => {
         if (!recommendation) {
@@ -53,8 +60,92 @@ export default function Recommendation() {
         return () => clearInterval(timer)
     }, [recommendation])
 
+    useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        if (!SpeechRecognition) {
+            setSpeechSupported(false)
+            return
+        }
+        setSpeechSupported(true)
+
+        const recognition = new SpeechRecognition()
+        recognition.continuous = false
+        recognition.interimResults = false
+        recognition.maxAlternatives = 1
+
+        recognition.onresult = (event) => {
+            const transcript = event.results?.[0]?.[0]?.transcript || ''
+            if (transcript.trim()) {
+                setGoalInput(transcript.trim())
+            }
+        }
+
+        recognition.onend = () => {
+            setIsListening(false)
+        }
+
+        recognition.onerror = (event) => {
+            if (event?.error === 'not-allowed' || event?.error === 'service-not-allowed') {
+                setSpeechError(t('recommendation.voicePermissionDenied'))
+            } else if (event?.error === 'no-speech') {
+                setSpeechError(t('recommendation.voiceNoSpeech'))
+            } else {
+                setSpeechError(t('recommendation.voiceError'))
+            }
+            setIsListening(false)
+        }
+
+        recognitionRef.current = recognition
+
+        return () => {
+            try {
+                recognition.stop()
+            } catch {
+                // noop
+            }
+            recognitionRef.current = null
+        }
+    }, [t])
+
+    const speechLocale = () => {
+        if (i18n.language.startsWith('ja')) {
+            return 'ja-JP'
+        }
+        if (i18n.language.startsWith('en')) {
+            return 'en-US'
+        }
+        return 'zh-CN'
+    }
+
+    const toggleListening = () => {
+        const recognition = recognitionRef.current
+        if (!recognition || !speechSupported) {
+            setSpeechError(t('recommendation.voiceUnsupported'))
+            return
+        }
+
+        if (isListening) {
+            recognition.stop()
+            return
+        }
+
+        setSpeechError('')
+        recognition.lang = speechLocale()
+        try {
+            recognition.start()
+            setIsListening(true)
+        } catch {
+            setSpeechError(t('recommendation.voiceError'))
+            setIsListening(false)
+        }
+    }
+
     const refreshRecommendation = () => {
-        void fetchRecommendation(selectedCity.id, selectedCity.name)
+        void fetchRecommendation(selectedCity.id, selectedCity.name, goalInput)
+    }
+
+    const generateRecommendation = () => {
+        void fetchRecommendation(selectedCity.id, selectedCity.name, goalInput)
     }
 
     const getWeatherIcon = (icon) => {
@@ -115,9 +206,44 @@ export default function Recommendation() {
                     </div>
                     <h2 className="text-2xl font-serif font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight leading-tight">{t('recommendation.getTitle')}<br />{t('recommendation.getSubtitle')}</h2>
                     <p className="text-zinc-500 text-sm mb-8 leading-relaxed max-w-[260px] mx-auto">{t('recommendation.description')}</p>
+                    <div className="w-full max-w-xs space-y-3 mb-4 text-left">
+                        <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                            {t('recommendation.goalLabel')}
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                className="input flex-1"
+                                value={goalInput}
+                                onChange={(event) => setGoalInput(event.target.value)}
+                                placeholder={t('recommendation.goalPlaceholder')}
+                            />
+                            <button
+                                type="button"
+                                className="btn-secondary px-3"
+                                onClick={toggleListening}
+                                disabled={!speechSupported}
+                                title={speechSupported
+                                    ? (isListening ? t('recommendation.voiceStop') : t('recommendation.voiceStart'))
+                                    : t('recommendation.voiceUnsupported')}
+                            >
+                                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                            </button>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 leading-relaxed">
+                            {speechSupported
+                                ? (isListening ? t('recommendation.voiceListening') : t('recommendation.goalHint'))
+                                : t('recommendation.voiceUnsupported')}
+                        </div>
+                        {speechError && (
+                            <div className="text-[11px] text-red-600 dark:text-red-300 leading-relaxed">
+                                {speechError}
+                            </div>
+                        )}
+                    </div>
+
                     <button
                         className="btn-primary w-full max-w-xs shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 py-3.5 rounded-xl border-none focus:ring-blue-500/50"
-                        onClick={() => { void fetchRecommendation(selectedCity.id) }}
+                        onClick={generateRecommendation}
                     >
                         <Sparkles size={18} className="animate-pulse" />
                         <span className="font-semibold tracking-wide">{t('recommendation.generate')}</span>
@@ -192,6 +318,15 @@ export default function Recommendation() {
                             <div className="col-span-2 sm:col-span-4 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                                 <div className="text-xs text-zinc-400">{t('recommendation.horoscopeSummary')}</div>
                                 <div className="text-sm text-zinc-700 dark:text-zinc-300 mt-1 leading-relaxed">{horoscope.summary}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {(goalRaw || goalNormalized) && (
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                            <div className="text-xs text-zinc-400 mb-1">{t('recommendation.goalUsed')}</div>
+                            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                {goalRaw || goalNormalized}
                             </div>
                         </div>
                     )}

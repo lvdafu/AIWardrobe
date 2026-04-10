@@ -18,6 +18,8 @@ const INITIAL_STATE = {
   suggestedShoes: null,
   suggestedAccessories: [],
   purchaseSuggestions: [],
+  goalRaw: '',
+  goalNormalized: '',
   selectedCity: {
     name: DEFAULT_LOCATION,
     id: DEFAULT_LOCATION
@@ -57,7 +59,7 @@ export function RecommendationProvider({ children }) {
     void fetchDefaultCity()
   }, [])
 
-  const fetchRecommendation = useCallback(async (location, preferredName = null) => {
+  const fetchRecommendation = useCallback(async (location, preferredName = null, goal = '') => {
     if (!location) {
       return null
     }
@@ -67,7 +69,12 @@ export function RecommendationProvider({ children }) {
     setState(prev => ({ ...prev, loading: true, error: '' }))
 
     try {
-      const response = await fetch(`${API_BASE}/recommendation?location=${encodeURIComponent(location)}`)
+      const params = new URLSearchParams({ location })
+      const trimmedGoal = (goal || '').trim()
+      if (trimmedGoal) {
+        params.set('goal', trimmedGoal)
+      }
+      const response = await fetch(`${API_BASE}/recommendation?${params.toString()}`)
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({}))
         if (requestId === requestIdRef.current) {
@@ -100,6 +107,8 @@ export function RecommendationProvider({ children }) {
         suggestedShoes: data.suggested_shoes || null,
         suggestedAccessories: data.suggested_accessories || [],
         purchaseSuggestions: data.purchase_suggestions || [],
+        goalRaw: data.goal_raw || '',
+        goalNormalized: data.goal_normalized || '',
         selectedCity: preferredName
           ? { name: preferredName, id: location }
           : (data.weather?.location ? { name: data.weather.location, id: location } : prev.selectedCity)

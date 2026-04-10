@@ -141,7 +141,18 @@
     "purchaseFallback": "不足分の購入提案",
     "buyKeywords": "おすすめアイテム",
     "goOutfit": "コーデへ",
-    "goWardrobe": "衣装棚へ"
+    "goWardrobe": "衣装棚へ",
+    "goalLabel": "今回の目的",
+    "goalPlaceholder": "例：通勤 / デート / スポーツ / 面接",
+    "goalHint": "目的は入力またはマイクで音声入力できます。",
+    "goalUsed": "今回の目的",
+    "voiceStart": "音声入力を開始",
+    "voiceStop": "音声入力を停止",
+    "voiceListening": "聞き取り中...",
+    "voiceUnsupported": "このブラウザでは音声入力に対応していません。手動で入力してください。",
+    "voicePermissionDenied": "マイク権限がありません。権限を有効にして再試行してください。",
+    "voiceNoSpeech": "音声を検出できませんでした。もう一度お試しください。",
+    "voiceError": "音声認識に失敗しました。手動入力をご利用ください。"
   },
   "home": {
     "today": "今日",
