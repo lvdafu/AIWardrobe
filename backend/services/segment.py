@@ -1,9 +1,12 @@
 """
 rembg 背景移除服务
 """
-from rembg import remove
-from PIL import Image
 import io
+
+from PIL import Image
+from rembg import remove
+
+from services.rembg_model import ensure_u2net_model
 
 
 def remove_background(image_bytes: bytes) -> bytes:
@@ -16,6 +19,7 @@ def remove_background(image_bytes: bytes) -> bytes:
     Returns:
         去除背景后的 PNG 图片字节数据
     """
+    ensure_u2net_model()
     input_img = Image.open(io.BytesIO(image_bytes))
     output = remove(input_img)
     

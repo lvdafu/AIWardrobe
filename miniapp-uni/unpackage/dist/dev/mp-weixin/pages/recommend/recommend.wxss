@@ -1,0 +1,17 @@
+
+.input.data-v-53877fc0 {
+  height: 76rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  margin-bottom: 16rpx;
+  background: #fff;
+}
+.line.data-v-53877fc0 {
+  margin-bottom: 12rpx;
+}
+.text.data-v-53877fc0 {
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+

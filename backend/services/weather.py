@@ -192,8 +192,16 @@ def validate_location_input(location: str) -> Optional[str]:
     if is_location_id(raw_location) or is_coordinate_location(raw_location):
         return None
 
+    # 纯城市名（如“上海”/“Tokyo”）允许直接查询，由地理编码服务解析。
+    # 仅当用户明确使用了分隔符但字段不足时，才提示补全结构化地点。
     if not is_complete_text_location(raw_location):
-        return "地点格式不完整，请使用“城市, 省/州, 国家”格式，例如：南京, 江苏, 中国"
+        parts = [
+            part.strip()
+            for part in LOCATION_PART_SEPARATOR_REGEX.split(raw_location)
+            if part.strip()
+        ]
+        if len(parts) > 1:
+            return "地点格式不完整，请使用“城市, 省/州, 国家”格式，例如：南京, 江苏, 中国"
 
     return None
 

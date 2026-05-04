@@ -1,15 +1,23 @@
 """
 图片上传 API
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from pathlib import Path
+import asyncio
 import uuid
+from pathlib import Path
+
+import httpx
+from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from services.segment import remove_background
 from services.removebg import remove_background_api
 from services.openai_compatible import analyze_clothes_openai
 from storage.config_store import load_config
-from domain.clothes import ClothesSemantics, ClothesCreate, ClothesItem, normalize_category_value
+from domain.clothes import (
+    ClothesSemantics,
+    ClothesCreate,
+    ClothesItem,
+    normalize_category_value,
+)
 from storage.db import add_clothes, get_clothes_by_id
 
 router = APIRouter()
@@ -19,6 +27,52 @@ UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 ALLOWED_CATEGORIES = {"top", "bottom", "shoes", "accessory"}
+
+# rembg 首次会从 GitHub 拉 u2net.onnx，国内常失败或极慢；超时后改用原图
+LOCAL_BG_TIMEOUT_SECONDS = 45
+
+
+async def _analyze_clothes_with_fallback(image_bytes: bytes) -> ClothesSemantics:
+    """
+    视觉识别失败时仍保存图片：常见原因是当前 LLM 不支持多模态（如 deepseek-chat）。
+    """
+    try:
+        return await analyze_clothes_openai(image_bytes)
+    except (ValueError, httpx.HTTPError, OSError) as exc:
+        msg = str(exc)
+        print(f"⚠️ 衣物视觉识别失败，使用占位语义入库: {msg[:500]}")
+        return ClothesSemantics(
+            category="accessory",
+            item="未识别衣物",
+            style_semantics=["待补充"],
+            season_semantics=["四季"],
+            usage_semantics=["日常"],
+            color_semantics="未知",
+            description="图片已保存，自动识别失败。请在网页端修改信息，或更换为支持图片的模型后重新上传。",
+        )
+
+
+async def _try_local_remove_background(raw_bytes: bytes) -> bytes:
+    """必须抠图成功；失败返回 503，不再静默改用原图。"""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(remove_background, raw_bytes),
+            timeout=LOCAL_BG_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=503,
+            detail=f"本地抠图超时（{LOCAL_BG_TIMEOUT_SECONDS}s）。"
+            "可稍后重试，或在设置中配置 remove.bg API Key 使用在线抠图。",
+        ) from None
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"❌ 本地抠图失败: {exc}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"抠图失败: {exc}。若在国内网络，请确认模型已下载到本机，或改用 remove.bg。",
+        ) from None
 
 
 @router.post("/upload", response_model=ClothesItem)
@@ -46,22 +100,18 @@ async def upload_image(file: UploadFile = File(...)):
         
         # 根据配置选择背景移除方式
         if config.bg_removal_method == "removebg" and config.removebg_api_key:
-            # 使用 remove.bg API
             try:
                 processed_bytes = await remove_background_api(
-                    raw_bytes, 
-                    config.removebg_api_key
+                    raw_bytes,
+                    config.removebg_api_key,
                 )
             except ValueError as e:
-                # 如果 remove.bg 失败，回退到本地处理
-                print(f"⚠️ remove.bg API 失败，回退到本地处理: {e}")
-                processed_bytes = remove_background(raw_bytes)
+                print(f"⚠️ remove.bg API 失败，尝试本地 rembg: {e}")
+                processed_bytes = await _try_local_remove_background(raw_bytes)
         else:
-            # 使用本地 rembg
-            processed_bytes = remove_background(raw_bytes)
+            processed_bytes = await _try_local_remove_background(raw_bytes)
         
-        # 使用 OpenAI 兼容 API 进行语义分析
-        semantics: ClothesSemantics = await analyze_clothes_openai(processed_bytes)
+        semantics: ClothesSemantics = await _analyze_clothes_with_fallback(processed_bytes)
         
         # 生成文件名并保存
         filename = f"{uuid.uuid4()}.png"

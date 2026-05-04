@@ -1,0 +1,14 @@
+
+.tip.data-v-132d2ab4 {
+  color: #6b7280;
+  margin-top: 16rpx;
+}
+.line.data-v-132d2ab4 {
+  margin-bottom: 12rpx;
+}
+.preview.data-v-132d2ab4 {
+  width: 100%;
+  margin-top: 16rpx;
+  border-radius: 12rpx;
+}
+

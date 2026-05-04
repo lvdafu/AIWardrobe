@@ -21,10 +21,8 @@ async def fetch_available_models() -> List[dict]:
     if not config.api_key:
         return []
     
-    # 确保 api_base 格式正确
+    # 兼容不同供应商的 base path（如 .../v1、.../v4）
     api_base = config.api_base.rstrip("/")
-    if not api_base.endswith("/v1"):
-        api_base = api_base + "/v1"
     
     url = f"{api_base}/models"
     
@@ -101,10 +99,8 @@ async def analyze_clothes_openai(image_bytes: bytes) -> ClothesSemantics:
     if not config.api_key:
         raise ValueError("请先配置 API Key")
     
-    # 确保 api_base 格式正确
+    # 兼容不同供应商的 base path（如 .../v1、.../v4）
     api_base = config.api_base.rstrip("/")
-    if not api_base.endswith("/v1"):
-        api_base = api_base + "/v1"
     
     url = f"{api_base}/chat/completions"
     
@@ -145,7 +141,11 @@ async def analyze_clothes_openai(image_bytes: bytes) -> ClothesSemantics:
         )
         
         if response.status_code != 200:
-            raise ValueError(f"API 请求失败: {response.status_code} - {response.text}")
+            detail = (response.text or "")[:800]
+            hint = ""
+            if response.status_code == 400 and "image" in detail.lower():
+                hint = "（当前模型可能不支持图片输入，请换用支持视觉的模型，例如 OpenAI 的 gpt-4o、或带 vision 的兼容接口。）"
+            raise ValueError(f"API 请求失败: {response.status_code}{hint} - {detail}")
         
         data = response.json()
         
