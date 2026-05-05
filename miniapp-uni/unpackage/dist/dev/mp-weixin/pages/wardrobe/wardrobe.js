@@ -102,20 +102,33 @@ var render = function () {
   var _vm = this
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
-  var g0 = _vm.wardrobe.tops.length
-  var g1 = _vm.wardrobe.bottoms.length
-  var g2 = _vm.wardrobe.shoes.length
-  var g3 = _vm.wardrobe.accessories.length
-  var g4 = _vm.allItems.length
+  var l1 = _vm.__map(_vm.groupedSections, function (section, __i2__) {
+    var $orig = _vm.__get_orig(section)
+    var g0 = section.items.length
+    var g1 = g0 > 0 ? section.items.length : null
+    var l0 =
+      g0 > 0
+        ? _vm.__map(section.items, function (item, __i3__) {
+            var $orig = _vm.__get_orig(item)
+            var m0 = _vm.toImageUrl(item.image_url)
+            return {
+              $orig: $orig,
+              m0: m0,
+            }
+          })
+        : null
+    return {
+      $orig: $orig,
+      g0: g0,
+      g1: g1,
+      l0: l0,
+    }
+  })
   _vm.$mp.data = Object.assign(
     {},
     {
       $root: {
-        g0: g0,
-        g1: g1,
-        g2: g2,
-        g3: g3,
-        g4: g4,
+        l1: l1,
       },
     }
   )
@@ -163,6 +176,48 @@ var _regenerator = _interopRequireDefault(__webpack_require__(/*! @babel/runtime
 var _asyncToGenerator2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/asyncToGenerator */ 41));
 var _toConsumableArray2 = _interopRequireDefault(__webpack_require__(/*! @babel/runtime/helpers/toConsumableArray */ 18));
 var _wardrobe = __webpack_require__(/*! ../../api/wardrobe */ 62);
+var _config = __webpack_require__(/*! ../../utils/config */ 44);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 //
 //
 //
@@ -194,23 +249,78 @@ var _default = {
         bottoms: [],
         shoes: [],
         accessories: []
-      }
+      },
+      searchText: '',
+      selectedSeason: '',
+      selectedStyle: '',
+      seasons: ['春', '夏', '秋', '冬'],
+      styles: ['休闲', '正式', '运动', '商务', '复古', '简约', '日常']
     };
   },
   computed: {
     allItems: function allItems() {
       return [].concat((0, _toConsumableArray2.default)(this.wardrobe.tops), (0, _toConsumableArray2.default)(this.wardrobe.bottoms), (0, _toConsumableArray2.default)(this.wardrobe.shoes), (0, _toConsumableArray2.default)(this.wardrobe.accessories));
     },
-    firstTwentyItems: function firstTwentyItems() {
-      return this.allItems.slice(0, 20);
+    filteredItems: function filteredItems() {
+      var _this = this;
+      var keyword = (this.searchText || '').trim().toLowerCase();
+      return this.allItems.filter(function (item) {
+        var hitKeyword = !keyword || (item.item || '').toLowerCase().includes(keyword) || (item.description || '').toLowerCase().includes(keyword);
+        var hitSeason = !_this.selectedSeason || (item.season_semantics || []).includes(_this.selectedSeason);
+        var hitStyle = !_this.selectedStyle || (item.style_semantics || []).includes(_this.selectedStyle);
+        return hitKeyword && hitSeason && hitStyle;
+      });
+    },
+    groupedSections: function groupedSections() {
+      var map = {
+        top: {
+          key: 'top',
+          title: '上装',
+          items: []
+        },
+        bottom: {
+          key: 'bottom',
+          title: '下装',
+          items: []
+        },
+        shoes: {
+          key: 'shoes',
+          title: '鞋履',
+          items: []
+        },
+        accessory: {
+          key: 'accessory',
+          title: '配饰',
+          items: []
+        }
+      };
+      this.filteredItems.forEach(function (item) {
+        var k = item.category in map ? item.category : 'accessory';
+        map[k].items.push(item);
+      });
+      return [map.top, map.bottom, map.shoes, map.accessory];
     }
   },
   onLoad: function onLoad() {
     this.loadData();
   },
+  onShow: function onShow() {
+    this.loadData();
+  },
   methods: {
+    toImageUrl: function toImageUrl(url) {
+      if (!url) return '';
+      if (/^https?:\/\//.test(url)) return url;
+      return "".concat(_config.BASE_URL).concat(url);
+    },
+    toggleSeason: function toggleSeason(v) {
+      this.selectedSeason = this.selectedSeason === v ? '' : v;
+    },
+    toggleStyle: function toggleStyle(v) {
+      this.selectedStyle = this.selectedStyle === v ? '' : v;
+    },
     loadData: function loadData() {
-      var _this = this;
+      var _this2 = this;
       return (0, _asyncToGenerator2.default)( /*#__PURE__*/_regenerator.default.mark(function _callee() {
         return _regenerator.default.wrap(function _callee$(_context) {
           while (1) {
@@ -223,7 +333,7 @@ var _default = {
                 _context.next = 4;
                 return (0, _wardrobe.getWardrobe)();
               case 4:
-                _this.wardrobe = _context.sent;
+                _this2.wardrobe = _context.sent;
                 _context.next = 10;
                 break;
               case 7:

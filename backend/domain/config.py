@@ -1,6 +1,7 @@
 """
 API 配置模型
 """
+import os
 from pydantic import BaseModel
 from typing import Optional, List, Literal
 
@@ -8,11 +9,17 @@ from typing import Optional, List, Literal
 class LLMConfig(BaseModel):
     """LLM API 配置"""
     api_base: str = "https://x666.me/v1"
-    api_key: str = "sk-F8oPcW8b5pgRtrmnR0ymh6yxCG6yCW3Gft7H3x792r3kn4Fi"
+    api_key: str = ""
     model: str = "gemini-flash-latest"
     # remove.bg 配置
-    removebg_api_key: str = "mcigdPJZy9oU6c2SMiEwj9VA"
+    removebg_api_key: str = ""
     bg_removal_method: Literal["local", "removebg"] = "removebg"  # 本地 rembg 或 remove.bg API
+    # COS 配置
+    cos_secret_id: str = ""
+    cos_secret_key: str = ""
+    cos_region: str = ""
+    cos_bucket: str = ""
+    cos_public_base_url: str = ""
     # 默认天气城市（用于首页与推荐页）
     weather_location: str = "上海, 上海市, 中国"
     # 用户星座配置（用于首页运势）
@@ -26,6 +33,11 @@ class LLMConfigUpdate(BaseModel):
     model: Optional[str] = None
     removebg_api_key: Optional[str] = None
     bg_removal_method: Optional[Literal["local", "removebg"]] = None
+    cos_secret_id: Optional[str] = None
+    cos_secret_key: Optional[str] = None
+    cos_region: Optional[str] = None
+    cos_bucket: Optional[str] = None
+    cos_public_base_url: Optional[str] = None
     weather_location: Optional[str] = None
     zodiac_sign: Optional[str] = None
 

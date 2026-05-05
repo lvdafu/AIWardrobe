@@ -11,6 +11,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from services.segment import remove_background
 from services.removebg import remove_background_api
 from services.openai_compatible import analyze_clothes_openai
+from services.cos_storage import upload_png_to_cos
 from storage.config_store import load_config
 from domain.clothes import (
     ClothesSemantics,
@@ -113,12 +114,40 @@ async def upload_image(file: UploadFile = File(...)):
         
         semantics: ClothesSemantics = await _analyze_clothes_with_fallback(processed_bytes)
         
-        # 生成文件名并保存
+        # 生成文件名
         filename = f"{uuid.uuid4()}.png"
-        filepath = UPLOAD_DIR / filename
-        
-        with open(filepath, "wb") as f:
-            f.write(processed_bytes)
+
+        # 优先上传 COS：统一 key 前缀为 wardrobe/
+        stored_image_key = filename
+        cos_enabled = all([
+            config.cos_secret_id,
+            config.cos_secret_key,
+            config.cos_region,
+            config.cos_bucket,
+            config.cos_public_base_url,
+        ])
+
+        if cos_enabled:
+            cos_key = f"wardrobe/{filename}"
+            try:
+                await upload_png_to_cos(
+                    file_bytes=processed_bytes,
+                    key=cos_key,
+                    secret_id=config.cos_secret_id,
+                    secret_key=config.cos_secret_key,
+                    region=config.cos_region,
+                    bucket=config.cos_bucket,
+                )
+                stored_image_key = cos_key
+            except Exception as exc:
+                print(f"⚠️ COS 上传失败，回退本地存储: {exc}")
+                filepath = UPLOAD_DIR / filename
+                with open(filepath, "wb") as f:
+                    f.write(processed_bytes)
+        else:
+            filepath = UPLOAD_DIR / filename
+            with open(filepath, "wb") as f:
+                f.write(processed_bytes)
         
         normalized_category = normalize_category_value(semantics.category)
         if normalized_category not in ALLOWED_CATEGORIES:
@@ -133,7 +162,7 @@ async def upload_image(file: UploadFile = File(...)):
             usage_semantics=semantics.usage_semantics,
             color_semantics=semantics.color_semantics,
             description=semantics.description,
-            image_filename=filename
+            image_filename=stored_image_key
         )
         
         clothes_id = await add_clothes(clothes_data)

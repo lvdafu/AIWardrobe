@@ -1,0 +1,26 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/recommend/recommend",
+    "pages/wardrobe/wardrobe",
+    "pages/upload/upload"
+  ],
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#007aff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "首页" },
+      { "pagePath": "pages/recommend/recommend", "text": "推荐" },
+      { "pagePath": "pages/wardrobe/wardrobe", "text": "衣橱" },
+      { "pagePath": "pages/upload/upload", "text": "上传" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTitleText": "AI衣橱",
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f7f8fa"
+  }
+}

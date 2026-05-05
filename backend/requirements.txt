@@ -4,8 +4,9 @@ python-multipart
 pillow
 rembg
 onnxruntime
-aiosqlite
+aiomysql
 google-generativeai
 pydantic
 httpx
 python-dotenv
+cos-python-sdk-v5
